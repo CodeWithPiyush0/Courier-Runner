@@ -2,12 +2,39 @@ import * as THREE from 'three';
 import {
   CHASER_START, CHASER_DANGER, CHASER_HOLD, CHASER_DECAY, placeOnWall,
 } from './config.js';
-import { buildDrone, buildAnglerfish } from './models.js';
 
 const FAR_BEHIND = 11; // just behind the camera, out of view
 const CLOSE_BEHIND = 2.6;
 const VISIBLE_WITHIN = 8.5;
-const SIDE_OFFSET = 0.3; // lanes; keeps it at the courier's heel instead of blocking the view
+const SIDE_OFFSET = 0.3; // lanes; keeps it at Riya's heel instead of blocking the view
+const CAMERA_PITCH = -0.3; // sprites tilt to face the gameplay camera
+
+const loader = new THREE.TextureLoader();
+const glow = (color, size) => new THREE.Mesh(
+  new THREE.CircleGeometry(size, 16),
+  new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }),
+);
+
+// A painted sprite of the chaser seen from behind (public/art/sprites/), plus a
+// glowing light that animates: the drone's siren, the fish's lure.
+function chaserSprite(file, height, light) {
+  const group = new THREE.Group();
+  const material = new THREE.MeshBasicMaterial({ transparent: true, alphaTest: 0.05, side: THREE.DoubleSide });
+  const sprite = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).translate(0, 0.5, 0), material); // origin at the bottom
+  sprite.rotation.x = CAMERA_PITCH;
+  material.map = loader.load(`/art/sprites/${file}.webp`, (texture) => {
+    texture.colorSpace = THREE.SRGBColorSpace;
+    sprite.scale.set((height * texture.image.width) / texture.image.height, height, 1);
+  });
+  sprite.scale.set(height, height, 1);
+  group.add(sprite);
+  const lamp = glow(light.color, light.size);
+  lamp.position.set(...light.at);
+  group.add(lamp);
+  group.material = material;
+  group.lamp = lamp;
+  return group;
+}
 
 // What's chasing you: the security drone in space, the anglerfish underwater.
 // Hangs back out of view, closes in when you get hit, and catches you if you
@@ -15,7 +42,10 @@ const SIDE_OFFSET = 0.3; // lanes; keeps it at the courier's heel instead of blo
 export class Chaser {
   constructor(scene) {
     this.object = new THREE.Group();
-    this.models = { space: buildDrone(), water: buildAnglerfish() };
+    this.models = {
+      space: chaserSprite('chaser-drone', 1.5, { color: 0xff3355, size: 0.16, at: [-0.28, 1.32, 0.05] }), // siren on top
+      water: chaserSprite('chaser-fish', 2.3, { color: 0xd8ff6a, size: 0.22, at: [0, 2.05, -0.3] }), // lure ahead of the head
+    };
     this.object.add(this.models.space, this.models.water);
     scene.add(this.object);
     this.time = 0;
@@ -60,10 +90,15 @@ export class Chaser {
     const behind = FAR_BEHIND - (FAR_BEHIND - CLOSE_BEHIND) * Math.min(1, this.chase) - Math.max(0, this.chase - 1) * 8;
     const sway = Math.sin(this.time * 1.7) * 0.12;
     const bob = Math.sin(this.time * 4) * 0.12;
-    placeOnWall(this.object, this.lane + SIDE_OFFSET + sway, 1.4 + bob, player.z + behind);
+    placeOnWall(this.object, this.lane + SIDE_OFFSET + sway, 0.4 + bob, player.z + behind);
     this.object.visible = behind < VISIBLE_WITHIN;
 
-    this.model.rotation.z = -sway * 1.5;
-    this.model.animate(dt, this.time);
+    const model = this.model;
+    model.rotation.z = -sway * 1.2;
+    if (this.zone === 'space') { // siren: red, then blue
+      model.lamp.material.color.set(Math.floor(this.time * 6) % 2 ? 0x3d7bff : 0xff3355);
+    } else { // the lure pulses
+      model.lamp.scale.setScalar(1 + Math.sin(this.time * 5) * 0.25);
+    }
   }
 }

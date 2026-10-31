@@ -26,3 +26,4 @@ node_modules/
 # tool outputs that are not part of the game
 _build_report.json
 dist/
+tools/out/

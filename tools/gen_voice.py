@@ -215,6 +215,13 @@ def main():
     (OUT / "manifest.json").write_text(json.dumps(manifest, indent=1, ensure_ascii=False), encoding="utf-8")
     print(f"manifest: {len(manifest)}/{len(lines)} lines voiced")
 
+    # Recordings of lines that were edited or removed from the scripts.
+    used = {Path(f).name for f in manifest.values()}
+    for old in OUT.glob("*.mp3"):
+        if old.name not in used:
+            old.unlink()
+            print(f"removed unused {old.name}")
+
 
 if __name__ == "__main__":
     main()

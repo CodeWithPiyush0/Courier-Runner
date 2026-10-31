@@ -26,7 +26,7 @@ const starRow = (n, total = 3) =>
   `<span class="stars">${Array.from({ length: total }, (_, i) => `<span class="${i < n ? 'on' : 'off'}">★</span>`).join('')}</span>`;
 
 // The full-screen cards. `actions` are the game's callbacks:
-// play(levelId), endless(), resume(), retry(), menu().
+// play(levelId), endless(), resume() (a paused run, or a saved checkpoint), retry(), menu().
 export class Screens {
   constructor(sound, actions) {
     this.overlay = document.getElementById('overlay');
@@ -61,17 +61,22 @@ export class Screens {
 
   showTitle() {
     document.body.classList.add('menu');
-    const level = LEVELS[progress.current - 1];
-    const started = progress.unlocked > 1;
     const reopen = () => this.showTitle();
+    const checkpoint = progress.checkpoint;
+    const level = LEVELS[(checkpoint?.level ?? progress.current) - 1];
+    // The main button: resume a delivery left half-way, continue the story, or start it.
+    const main = checkpoint
+      ? `<button class="primary" data-action="resume">Resume · ${level.title} · ${checkpoint.distance} m</button>
+         <button data-action="play" data-arg="${level.id}">Restart this delivery</button>`
+      : `<button class="primary" data-action="play" data-arg="${level.id}">
+           ${progress.started ? 'Continue' : 'Start'} · ${level.title}</button>`;
     this.render(`
       <img class="emblem" src="/art/emblem.webp" alt="">
       <h1>Courier Runner</h1>
       <p class="tagline">Riya from Patna has one parcel to deliver, through a space station and an alien ocean.
         And the parcel is humming.</p>
       <div class="buttons">
-        <button class="primary" data-action="play" data-arg="${level.id}">
-          ${started ? 'Continue' : 'Start'} · ${level.title}</button>
+        ${main}
         <button data-action="route">Delivery route</button>
         <button data-action="endless" ${progress.endlessUnlocked ? '' : 'disabled'}>
           ${progress.endlessUnlocked ? 'Endless mode' : '🔒 Endless · finish the story'}</button>
@@ -79,13 +84,32 @@ export class Screens {
           <button class="ghost" data-action="howto">How to play</button>
           <button class="ghost" data-action="settings">Settings</button>
         </div>
+        ${progress.started ? '<button class="ghost" data-action="newgame">Start over (new game)</button>' : ''}
       </div>`, {
+      resume: this.actions.resume,
       play: (id) => this.actions.play(Number(id)),
       route: () => this.showRoute(reopen),
       endless: this.actions.endless,
       howto: () => this.showHowTo(reopen),
       settings: () => this.showSettings(reopen),
-    }, { primary: 'play', title: true });
+      newgame: () => this.showConfirm({
+        title: 'Start over?',
+        text: 'This erases your stars, unlocked deliveries and saved progress.',
+        yes: 'Yes, start over',
+        onYes: () => { progress.reset(); this.showTitle(); },
+        onNo: reopen,
+      }),
+    }, { primary: checkpoint ? 'resume' : 'play', title: true });
+  }
+
+  showConfirm({ title, text, yes, onYes, onNo }) {
+    this.render(`
+      <h2>${title}</h2>
+      <p class="tagline">${text}</p>
+      <div class="buttons">
+        <button class="primary" data-action="no">Keep my progress</button>
+        <button data-action="yes">${yes}</button>
+      </div>`, { yes: onYes, no: onNo }, { primary: 'no', back: 'no' });
   }
 
   showRoute(back) {
@@ -156,6 +180,15 @@ export class Screens {
         if (name === 'haptics' && input.checked) this.sound.buzz(40);
       });
     }
+  }
+
+  // While a delivery's cutscene pictures and voices load.
+  showLoading(level) {
+    this.render(`
+      <p class="sub">Delivery ${level.id}</p>
+      <h2>${level.title}</h2>
+      <div class="loader"><i></i><i></i><i></i></div>
+      <p class="hint">Packing the parcel…</p>`, {});
   }
 
   showPause() {

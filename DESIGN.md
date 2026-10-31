@@ -4,7 +4,7 @@ A low-poly 3D endless runner in the browser (Three.js). Cool sci-fi tone with a
 funny streak. Voice lines in Indian English.
 
 ## Story — "The Mystery Parcel"
-**Riya Kumari**, 19, from Patna (Bihar), rides night shifts for an interplanetary
+**Riya**, 19, from Patna (Bihar), rides night shifts for an interplanetary
 delivery app. Mishra ji at Dispatch sends her a humming parcel from orbital
 station Chandra-7 to "Nani, Coral Colony, Ocean Planet Neela". Station security
 thinks it's contraband; a giant anglerfish keeps following it. Twist: it's a
@@ -28,16 +28,40 @@ its seams. All story text lives in `src/story.js`.
 
 Each ends at a marigold-garland drop-off: DELIVERED stamp, short outro, then
 up to 3 stars (delivered · ≥60 % of gems · parcel undamaged = no hits).
-Finishing delivery 5 unlocks **Endless**. Progress is saved in the browser.
+Finishing delivery 5 unlocks **Endless**. Progress is saved in the browser,
+including a checkpoint every few seconds of a delivery: after a refresh the title
+offers **Resume** (at that distance) or **Restart this delivery**, and **Start
+over** (with a confirmation) wipes everything.
 
-## Cutscenes and tutorial
-- Letterboxed cutscenes with voiced, portrait subtitles: exterior station
-  shots, 360° orbits round Riya, parcel close-ups, a swoop into the gameplay
-  camera. Tap / Space = next line, Skip / Esc = skip. (`cinematic.js`,
-  `scenes.js`, finale in `ending.js`.)
-- Tutorial: when a lesson obstacle is close, time nearly stops and a gesture
-  (touch) or key prompt waits for the right move; other moves are ignored.
-  Later deliveries show tips for the chaser, power-ups and air. (`tutorial.js`)
+## Look: 2.5D
+- **In play**, the tunnel, obstacles and pickups are 3D; Riya and the chasers are
+  painted sprites (Gemini, drawn from her portrait as a reference so she always
+  matches) on planes facing the gameplay camera. Riya has a sprite per pose
+  (ride, lean left/right, jump, slide, zapped, cheer) with squash-and-stretch,
+  a barrel-roll flip and a hit flash. (`rider.js`, `chaser.js`)
+- **Cutscenes** are 2.5D: painted backgrounds, character cut-outs and floating
+  particles at different depths in front of a moving perspective camera
+  (push-ins, pans, rises), so every move has real parallax; full illustrated
+  shots for the big moments; the speaker bobs with their voice; dips to black
+  between shots; captions; a painted delivery title card. Delivery 1 opens with
+  3D shots: outside the station, then rushing into the tunnel to find Riya, and
+  every intro ends craning down into the run. (`stage.js`, `scenes.js`,
+  `cinematic.js`) Art: `npm run story-art` (`tools/gen_story_art.py`).
+- **Mouths** move: the speaker's cut-out gets an "open mouth" patch that flaps
+  with the loudness of their voice. Patches are made locally by
+  `tools/mouth_flaps.py` (mouth positions are measured in that file; re-measure
+  if a cut-out is redrawn).
+- **Sharpness:** all painted art was redrawn at 2K (`tools/upscale_art.py`), and
+  2.5D cutscenes always render at full screen resolution, whatever the game's
+  graphics quality.
+- **Voices** are fetched before a delivery starts and decoded into memory, so
+  they start instantly; each cutscene line waits for its voice to finish.
+  During a run, chatter never cuts off an important line.
+
+## Tutorial
+When a lesson obstacle is close, time nearly stops and a gesture (touch) or
+key prompt waits for the right move; other moves are ignored. Later deliveries
+show tips for the chaser, power-ups and air. (`tutorial.js`)
 
 ## UI style
 Indian truck-art retro-futurism: saffron, rani pink, teal and cream on deep

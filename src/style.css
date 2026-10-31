@@ -670,3 +670,36 @@ body.cinematic #mute { display: none; } /* the subtitles need the space */
   #overlay.title .buttons button { padding: 9px 14px 7px; font-size: 15px; }
   #overlay.title .buttons button.primary { font-size: 17px; }
 }
+
+/* ---------- cutscene cuts, delivery title card, loading ---------- */
+#cut { position: absolute; inset: 0; background: #07081a; opacity: 0; pointer-events: none; }
+#cut.on { animation: dip 0.5s ease-out; }
+@keyframes dip { from { opacity: 1; } to { opacity: 0; } }
+
+#titlecard {
+  position: absolute;
+  left: max(6vw, var(--left));
+  top: 50%;
+  padding: 10px 26px 12px 18px;
+  background: var(--indigo);
+  border-left: 8px solid var(--saffron);
+  border-radius: 4px 16px 16px 4px;
+  box-shadow: var(--truck-border), 0 18px 40px rgba(0, 0, 0, 0.5);
+  transform: translateY(-50%) skewX(-6deg);
+  animation: title-in 0.7s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+#titlecard small { display: block; font: 800 14px / 1.2 var(--body); letter-spacing: 3px; text-transform: uppercase; color: var(--marigold); }
+#titlecard b {
+  display: block;
+  font: clamp(36px, 10vw, 64px) / 1.05 var(--display);
+  color: var(--saffron);
+  text-shadow: 3px 3px 0 var(--rani), 6px 6px 0 #07081a;
+}
+#titlecard span { display: block; font: 700 15px / 1.3 var(--body); color: var(--cream); opacity: 0.85; }
+@keyframes title-in { from { opacity: 0; transform: translate(-60px, -50%) skewX(-6deg); } }
+
+.loader { display: flex; justify-content: center; gap: 10px; margin: 8px 0 4px; }
+.loader i { width: 14px; height: 14px; border-radius: 50%; background: var(--saffron); animation: hop 0.9s ease-in-out infinite; }
+.loader i:nth-child(2) { background: var(--rani); animation-delay: 0.15s; }
+.loader i:nth-child(3) { background: var(--teal-light); animation-delay: 0.3s; }
+@keyframes hop { 50% { transform: translateY(-10px); } }

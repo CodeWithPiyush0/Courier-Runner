@@ -1,6 +1,7 @@
 // The story: who's who, the five deliveries, and every cutscene line.
 // Lines here are voiced by tools/gen_voice.py (each speaker has their own voice),
 // so after editing a line, run `npm run voice` to record the new version.
+// `shot` names the cutscene picture for the line (see scenes.js).
 
 export const CHARACTERS = {
   riya: { name: 'Riya', portrait: '/art/portrait-riya.webp' },
@@ -23,16 +24,16 @@ export const LEVELS = [
     powers: false,
     tutorial: 'basics',
     intro: [
-      { who: 'dispatch', text: "Riya! Riya Kumari! Are you awake? A big order just came in." },
-      { who: 'riya', text: "Ka ho, Mishra ji! I'm always awake. Night shift, na? What's the parcel?" },
-      { who: 'dispatch', text: "Pickup from Chandra-7. Drop at... 'Nani, Coral Colony, Ocean Planet Neela'." },
-      { who: 'dispatch', text: "Strange box. It's humming." },
-      { who: 'riya', text: "Humming? Parcels don't hum, Mishra ji." },
-      { who: 'dispatch', text: "This one does. Five-star tip if it arrives today. Chalo, I'll guide you through the cargo ring." },
+      { who: 'dispatch', shot: 'dispatch', text: "Riya! Riya! Are you awake? A big order just came in." },
+      { who: 'riya', shot: 'dock', text: "Ka ho, Mishra ji! I'm always awake. Night shift, na? What's the parcel?" },
+      { who: 'dispatch', shot: 'dispatch-close', text: "Pickup from Chandra-7. Drop at... 'Nani, Coral Colony, Ocean Planet Neela'." },
+      { who: 'dispatch', shot: 'parcel', text: "Strange box. It's humming." },
+      { who: 'riya', shot: 'dock-shock', text: "Humming? Parcels don't hum, Mishra ji." },
+      { who: 'dispatch', shot: 'dispatch', text: "This one does. Five-star tip if it arrives today. Chalo, I'll guide you through the cargo ring." },
     ],
     outro: [
-      { who: 'riya', text: "Cargo ring cleared! Easy-peasy." },
-      { who: 'dispatch', text: "Don't celebrate yet. Station security is asking questions about your parcel." },
+      { who: 'riya', shot: 'tunnel-grin', text: "Cargo ring cleared! Easy-peasy." },
+      { who: 'dispatch', shot: 'dispatch-close', text: "Don't celebrate yet. Station security is asking questions about your parcel." },
     ],
   },
   {
@@ -45,13 +46,13 @@ export const LEVELS = [
     powers: true,
     tutorial: 'chase',
     intro: [
-      { who: 'security', text: "Attention, courier. Your parcel is emitting unknown signals. Stop for inspection." },
-      { who: 'riya', text: "Sorry, sir! Delivery deadline hai! Inspect it at the next station!" },
-      { who: 'dispatch', text: "Riya, if that drone zaps you twice, it catches you. Keep moving!" },
+      { who: 'security', shot: 'security', text: "Attention, courier. Your parcel is emitting unknown signals. Stop for inspection." },
+      { who: 'riya', shot: 'tunnel-shock', text: "Sorry, sir! Delivery deadline hai! Inspect it at the next station!" },
+      { who: 'dispatch', shot: 'dispatch-close', text: "Riya, if that drone zaps you twice, it catches you. Keep moving!" },
     ],
     outro: [
-      { who: 'dispatch', text: "You lost them! But the sensors say there's a hull breach ahead." },
-      { who: 'riya', text: "A breach? As in... water?" },
+      { who: 'dispatch', shot: 'dispatch', text: "You lost them! But the sensors say there's a hull breach ahead." },
+      { who: 'riya', shot: 'tunnel-shock', text: "A breach? As in... water?" },
     ],
   },
   {
@@ -64,13 +65,13 @@ export const LEVELS = [
     powers: true,
     tutorial: 'water',
     intro: [
-      { who: 'dispatch', text: "The cargo ring runs right into the Neela sea dome. Something big cracked it open." },
-      { who: 'riya', text: "Arre baap re. My board is waterproof, right?" },
-      { who: 'dispatch', text: "Mostly. Grab air bubbles, or you'll be swimming home." },
+      { who: 'dispatch', shot: 'breach', text: "The cargo ring runs right into the Neela sea dome. Something big cracked it open." },
+      { who: 'riya', shot: 'tunnel-shock', text: "Arre baap re. My board is waterproof, right?" },
+      { who: 'dispatch', shot: 'dispatch', text: "Mostly. Grab air bubbles, or you'll be swimming home." },
     ],
     outro: [
-      { who: 'riya', text: "Mishra ji, something huge with a glowing light is following me!" },
-      { who: 'dispatch', text: "That's a giant anglerfish. And it seems to want your parcel." },
+      { who: 'riya', shot: 'deep', text: "Mishra ji, something huge with a glowing light is following me!" },
+      { who: 'dispatch', shot: 'dispatch-close', text: "That's a giant anglerfish. And it seems to want your parcel." },
     ],
   },
   {
@@ -82,12 +83,12 @@ export const LEVELS = [
     chaser: true,
     powers: true,
     intro: [
-      { who: 'riya', text: "Why would a fish want a parcel?" },
-      { who: 'dispatch', text: "Maybe it ordered something too. Just don't let it bite you!" },
-      { who: 'riya', text: "The box is getting warmer. And it's glowing brighter." },
+      { who: 'riya', shot: 'deep-close', text: "Why would a fish want a parcel?" },
+      { who: 'dispatch', shot: 'dispatch', text: "Maybe it ordered something too. Just don't let it bite you!" },
+      { who: 'riya', shot: 'parcel', text: "The box is getting warmer. And it's glowing brighter." },
     ],
     outro: [
-      { who: 'dispatch', text: "Coral Colony is just ahead. Nani has called every five minutes." },
+      { who: 'dispatch', shot: 'dispatch-close', text: "Coral Colony is just ahead. Nani has called every five minutes." },
     ],
   },
   {
@@ -100,28 +101,28 @@ export const LEVELS = [
     powers: true,
     finale: true,
     intro: [
-      { who: 'nani', text: "Riya beta! Is my parcel coming? I have made litti-chokha for you." },
-      { who: 'riya', text: "Coming, Nani! Just a small fish problem. A very big fish problem." },
+      { who: 'nani', shot: 'nani', text: "Riya beta! Is my parcel coming? I have made litti-chokha for you." },
+      { who: 'riya', shot: 'tunnel-grin', text: "Coming, Nani! Just a small fish problem. A very big fish problem." },
     ],
     outro: [],
   },
 ];
 
-// The finale at Nani's door. `event` cues something in the scene.
+// The finale at Nani's door.
 export const ENDING = [
-  { who: 'nani', text: "Oh! My little night-light has arrived!", event: 'open' },
-  { who: 'riya', text: "Nani... that's an egg. An anglerfish egg!", event: 'glow' },
-  { who: 'nani', text: "I ordered a pet that glows. The shop said 'some assembly required'.", event: 'hatch' },
-  { who: 'riya', text: "So the big fish wasn't chasing me. She was following her baby!", event: 'mother' },
-  { who: 'nani', text: "Then she must stay for dinner too. Litti-chokha for everyone!" },
-  { who: 'dispatch', text: "Delivery confirmed. Five stars! And Riya, the customer wants to adopt the mother too." },
-  { who: 'riya', text: "Mishra ji, next time, please read the parcel label first!" },
+  { who: 'nani', shot: 'doorstep', text: "Oh! My little night-light has arrived!" },
+  { who: 'riya', shot: 'egg', text: "Nani... that's an egg. An anglerfish egg!" },
+  { who: 'nani', shot: 'hatch', text: "I ordered a pet that glows. The shop said 'some assembly required'." },
+  { who: 'riya', shot: 'mother', text: "So the big fish wasn't chasing me. She was following her baby!" },
+  { who: 'nani', shot: 'dinner', text: "Then she must stay for dinner too. Litti-chokha for everyone!" },
+  { who: 'dispatch', shot: 'dispatch-close', text: "Delivery confirmed. Five stars! And Riya, the customer wants to adopt the mother too." },
+  { who: 'riya', shot: 'kitchen-wave', text: "Mishra ji, next time, please read the parcel label first!" },
 ];
 
 // Shown over the opening exterior shot.
 export const PROLOGUE_CAPTION = 'Chandra-7 Orbital Station · above Ocean Planet Neela · 2:47 AM';
 
-// In-game tutorial prompts. `wait` is the action that completes the step.
+// In-game tutorial prompts. `gesture` is the touch animation shown.
 export const TUTORIAL_TEXT = {
   lane: { touch: 'Swipe LEFT or RIGHT to dodge', key: 'Press ← or → to dodge', gesture: 'swipe-x' },
   jump: { touch: 'Swipe UP to jump the low laser', key: 'Press ↑ to jump the low laser', gesture: 'swipe-up' },

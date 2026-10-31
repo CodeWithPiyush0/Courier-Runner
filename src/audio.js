@@ -6,7 +6,7 @@ const VOICE_DUCK = 0.45; // music level while Dispatch is talking
 const PAUSE_DUCK = 0.35;
 
 // All game audio: streamed music with crossfades, synthesized sound effects,
-// Dispatch's voice, and phone vibration. Everything runs through one
+// the characters' voices, and phone vibration. Everything runs through one
 // AudioContext with a gain per channel, so volumes work even on iOS (where
 // <audio>.volume is read-only). Browsers only allow audio after a tap or key
 // press, so nothing plays until unlock() is called from one.
@@ -18,6 +18,10 @@ export class Sound {
     this.wantedTrack = null;
     this.voiceDuck = 1;
     this.pauseDuck = 1;
+    this.voiceFiles = new Map(); // url -> Promise<ArrayBuffer | null> (fetched, not yet decoded)
+    this.voiceBuffers = new Map(); // url -> Promise<AudioBuffer | null>
+    this.voiceSource = null;
+    this.voiceToken = 0;
     settings.onChange(() => this.applyVolumes());
   }
 
@@ -37,9 +41,11 @@ export class Sound {
       this[bus].connect(this.master);
     }
 
-    this.voiceEl = new Audio();
-    ctx.createMediaElementSource(this.voiceEl).connect(this.voiceBus);
-    this.voiceEl.addEventListener('ended', () => this.setVoiceDuck(1));
+    // Voices go through an analyser so cutscenes can make the speaker bob as they talk.
+    this.voiceAnalyser = ctx.createAnalyser();
+    this.voiceAnalyser.fftSize = 256;
+    this.voiceAnalyser.connect(this.voiceBus);
+    this.voiceSamples = new Uint8Array(this.voiceAnalyser.fftSize);
 
     // One second of white noise, reused by every noisy effect.
     this.noiseBuffer = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
@@ -99,16 +105,66 @@ export class Sound {
   }
 
   // ---------- voice ----------
+  // Voice clips are short, so they are fetched ahead of time and decoded into
+  // memory: they start instantly and we know exactly when each one ends.
 
-  playVoice(file) {
+  fetchVoice(url) {
+    if (!this.voiceFiles.has(url)) {
+      this.voiceFiles.set(url, fetch(url).then((res) => (res.ok ? res.arrayBuffer() : null)).catch(() => null));
+    }
+    return this.voiceFiles.get(url);
+  }
+
+  decodeVoice(url) {
+    if (!this.voiceBuffers.has(url)) {
+      this.voiceBuffers.set(url, this.fetchVoice(url)
+        .then((data) => (data ? this.ctx.decodeAudioData(data.slice(0)) : null))
+        .catch(() => null));
+    }
+    return this.voiceBuffers.get(url);
+  }
+
+  // Play a clip, replacing any line already playing. Resolves when it ends
+  // (or straight away if it can't play).
+  async playVoice(url) {
     if (!this.ctx) return;
-    this.voiceEl.src = file;
-    this.voiceEl.play().then(() => this.setVoiceDuck(VOICE_DUCK)).catch(() => {});
+    this.stopVoice();
+    const token = this.voiceToken;
+    const buffer = await this.decodeVoice(url);
+    if (!buffer || token !== this.voiceToken) return;
+    const source = this.ctx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(this.voiceAnalyser);
+    this.voiceSource = source;
+    this.setVoiceDuck(VOICE_DUCK);
+    await new Promise((resolve) => {
+      source.onended = resolve;
+      source.start();
+    });
+    if (this.voiceSource === source) {
+      this.voiceSource = null;
+      this.setVoiceDuck(1);
+    }
   }
 
   stopVoice() {
-    this.voiceEl?.pause();
-    this.setVoiceDuck(1);
+    this.voiceToken++;
+    if (this.voiceSource) {
+      try { this.voiceSource.stop(); } catch { /* already stopped */ }
+      this.voiceSource = null;
+    }
+    if (this.ctx) this.setVoiceDuck(1);
+  }
+
+  get voiceBusy() { return Boolean(this.voiceSource); }
+
+  // How loud the current line is right now, 0..1.
+  voiceLevel() {
+    if (!this.voiceSource) return 0;
+    this.voiceAnalyser.getByteTimeDomainData(this.voiceSamples);
+    let sum = 0;
+    for (const v of this.voiceSamples) sum += (v - 128) ** 2;
+    return Math.min(1, Math.sqrt(sum / this.voiceSamples.length) / 40);
   }
 
   // ---------- vibration ----------

@@ -105,11 +105,12 @@ export class Hud {
     this.stamp.classList.toggle('hidden', !visible);
   }
 
-  // Show a radio line from `who` (default Dispatch), optionally after `delay` seconds.
-  say(text, { delay = 0, who = 'dispatch' } = {}) {
+  // Show a radio line from `who` (default Dispatch), optionally after `delay`
+  // seconds. Low-priority chatter is shown but not voiced over a line already playing.
+  say(text, { delay = 0, who = 'dispatch', priority = 'high' } = {}) {
     clearTimeout(this.sayTimer);
     if (delay > 0) {
-      this.sayTimer = setTimeout(() => this.say(text, { who }), delay * 1000);
+      this.sayTimer = setTimeout(() => this.say(text, { who, priority }), delay * 1000);
       return;
     }
     const speaker = CHARACTERS[who];
@@ -117,7 +118,7 @@ export class Hud {
     this.radioName.textContent = speaker.name;
     this.radioText.textContent = text;
     this.radio.classList.remove('hidden');
-    this.voice.play(text);
+    this.voice.play(text, { priority });
     clearTimeout(this.radioTimer);
     this.radioTimer = setTimeout(() => this.hideDispatch(), Math.max(4000, text.length * 70));
   }

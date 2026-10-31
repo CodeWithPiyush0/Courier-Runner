@@ -9,7 +9,7 @@ import {
 } from './config.js';
 import { settings } from './settings.js';
 import { progress } from './progress.js';
-import { LEVELS } from './story.js';
+import { LEVELS, ENDING } from './story.js';
 import { ZonePlan } from './zones.js';
 import { Tube } from './tube.js';
 import { Player } from './player.js';
@@ -23,9 +23,9 @@ import { Screens } from './screens.js';
 import { Sound } from './audio.js';
 import { Voice } from './voice.js';
 import { Cinematic } from './cinematic.js';
+import { Stage } from './stage.js';
 import { Tutorial } from './tutorial.js';
-import { Ending } from './ending.js';
-import { introBeats, outroBeats } from './scenes.js';
+import { introBeats, outroBeats, endingBeats, picturesFor } from './scenes.js';
 import {
   START_LINES, RUN_LINES, ENTER_WATER_LINES, ENTER_SPACE_LINES, LOW_OXYGEN_LINES, HIT_LINES, CRASH_LINES,
   CAUGHT_LINES, DROWNED_LINES, POWER_LINES, SHIELD_BREAK_LINES, pick,
@@ -37,6 +37,9 @@ const FOV = 72;
 const BOOST_FOV = 92;
 const TOUCH = window.matchMedia('(pointer: coarse)').matches;
 const STORY_SPEED_RANGE = 22; // story speed = SPEED_START + difficulty * this
+const LOAD_TIMEOUT = 8000; // ms to wait for a cutscene's pictures and voices before going anyway
+const CHECKPOINT_EVERY = 3; // seconds of running between saves of the delivery in progress
+const CUTSCENE_PIXEL_RATIO = Math.min(window.devicePixelRatio, 2); // cutscenes are cheap: always full sharpness
 const ARRIVE_TIME = 1.6; // seconds to glide to a stop at the drop-off
 const GEMS_FOR_STAR = 0.6;
 
@@ -128,14 +131,18 @@ const bursts = new Bursts(scene);
 const sound = new Sound();
 const voice = new Voice(sound);
 const hud = new Hud(voice);
-const cinematic = new Cinematic({ camera, scene, voice });
+const stage = new Stage(sound);
+window.addEventListener('resize', () => {
+  stage.camera.aspect = window.innerWidth / window.innerHeight;
+  stage.camera.updateProjectionMatrix();
+});
+const cinematic = new Cinematic({ camera, scene, voice, stage });
 const tutorial = new Tutorial(sound);
-const ending = new Ending(scene, bursts);
 const screens = new Screens(sound, {
   play: (id) => startLevel(id),
   endless: () => startEndless(),
   retry: () => retry(),
-  resume: () => resume(),
+  resume: () => (state === 'paused' ? resume() : resumeCheckpoint()),
   menu: () => showMenu(),
 });
 const playerPosition = new THREE.Vector3();
@@ -161,6 +168,8 @@ let runTime = 0;
 let deadTime = 0;
 let nextLineAt = 0;
 let arrive = null; // { speed, time } while gliding to a stop at the drop-off
+let checkpointTimer = 0;
+let stageSharp = false; // renderer switched to full resolution for a 2.5D cutscene
 
 function readBest() {
   try { return Number(localStorage.getItem(BEST_KEY)) || 0; } catch { return 0; }
@@ -200,8 +209,9 @@ function setZone(next) {
 // Reset the world for a fresh run along `route` (null = endless).
 function setupRun(route) {
   cinematic.finish();
-  ending.clear();
   tutorial.stop();
+  voice.stop(); // nothing from the last run (a game-over quip, a radio line) carries over
+  hud.hideDispatch();
   player.reset();
   zones.reset(player.z, route);
   tube.reset(player.z);
@@ -242,13 +252,34 @@ function showMenu() {
   screens.showTitle();
 }
 
-// Start a story delivery. The intro plays unless this is a retry.
-function startLevel(id, { intro = true } = {}) {
+// Everything a delivery's cutscenes say and show, so it can be loaded up front.
+function cutsceneLines(lvl) {
+  return [...lvl.intro, ...lvl.outro, ...(lvl.finale ? ENDING : [])];
+}
+
+// Load a delivery's cutscene pictures and voices (giving up after a while, so a
+// slow connection can't block the game: missing bits are just skipped).
+function loadCutscenes(lvl) {
+  const lines = cutsceneLines(lvl);
+  const loading = Promise.all([stage.load(picturesFor(lines)), voice.preload(lines.map((l) => l.text))]);
+  return Promise.race([loading, new Promise((resolve) => setTimeout(resolve, LOAD_TIMEOUT))]);
+}
+
+// Start a story delivery. The intro plays unless this is a retry or a resume.
+// `resumeAt` is a saved checkpoint to continue from.
+async function startLevel(id, { intro = true, resumeAt = null } = {}) {
   sound.unlock();
+  if (!resumeAt) progress.clearCheckpoint();
   level = LEVELS[id - 1];
+  const thisLevel = level;
   setupRun(level.zones);
-  screens.hide();
   hud.hide();
+  state = 'loading';
+  screens.showLoading(level);
+  await loadCutscenes(level);
+  if (level !== thisLevel || state !== 'loading') return; // picked something else meanwhile
+  screens.hide();
+  if (resumeAt) return resumeFrom(resumeAt);
   if (!intro) return beginRun();
   if (level.chaser) chaser.chase = 1; // security / the fish is right there in the intro
   state = 'cinematic';
@@ -261,6 +292,30 @@ function startLevel(id, { intro = true } = {}) {
       beginRun();
     },
   });
+}
+
+// Continue the delivery saved in the checkpoint (after a refresh, or from the menu).
+function resumeCheckpoint() {
+  const checkpoint = progress.checkpoint;
+  if (checkpoint) startLevel(checkpoint.level, { intro: false, resumeAt: checkpoint });
+}
+
+// Move a freshly set-up run forward to a checkpoint's distance. A first
+// delivery left mid-tutorial starts over (the lessons run in order).
+function resumeFrom(checkpoint) {
+  if (!checkpoint.tutorialDone || checkpoint.distance < 1) return beginRun();
+  distance = checkpoint.distance;
+  player.z = startZ - distance;
+  coins = checkpoint.coins;
+  hits = checkpoint.hits;
+  track.reset(player.z, { powers: level.powers });
+  tube.reset(player.z);
+  setZone(zones.zoneAt(player.z));
+  applyAtmosphere(1);
+  zoneSpeed = ZONE_PHYSICS[zone].speedFactor;
+  sound.playMusic(zone);
+  beginRun({ lessons: false });
+  hud.banner(`${distance} m`);
 }
 
 function startEndless() {
@@ -277,15 +332,29 @@ function retry() {
   else startEndless();
 }
 
-function beginRun() {
+function beginRun({ lessons = true } = {}) {
   state = 'running';
+  checkpointTimer = 0;
   hud.show();
-  tutorial.start(level?.tutorial, track);
+  if (lessons) tutorial.start(level?.tutorial, track);
   if (!chaserActive()) chaser.backOff();
+}
+
+// Remember the delivery in progress, so a refresh can resume it.
+function saveCheckpoint() {
+  if (!level || state !== 'running' || tutorial.waiting) return;
+  progress.saveCheckpoint({
+    level: level.id,
+    distance: Math.floor(distance),
+    coins,
+    hits,
+    tutorialDone: level.tutorial !== 'basics' || !tutorial.step,
+  });
 }
 
 function pause() {
   if (state !== 'running') return;
+  saveCheckpoint();
   state = 'paused';
   sound.setPaused(true);
   hud.hideDispatch();
@@ -300,6 +369,7 @@ function resume() {
 }
 
 function die(cause) {
+  progress.clearCheckpoint(); // a failed delivery starts again from the beginning
   state = 'dead';
   deathCause = cause;
   deadTime = 0;
@@ -333,11 +403,11 @@ function reachDropOff(speed) {
   chaser.backOff();
   powers.reset();
   player.targetLane = Math.round(player.targetLane / LANES) * LANES; // back down to the floor
+  player.pose = { cheer: true };
   hud.hide();
   hud.showStamp(true);
   sound.play('power');
   sound.buzz([30, 60, 30]);
-  if (level.finale) ending.build(new THREE.Vector3(0, -TUBE_RADIUS, player.z - (speed * ARRIVE_TIME) / 2), player);
 }
 
 function afterArrival() {
@@ -349,20 +419,15 @@ function afterArrival() {
   progress.complete(level.id, stars);
   const results = () => {
     state = 'results';
-    player.pose = { idle: true };
+    player.pose = { cheer: true };
     sound.setPaused(true);
     if (level.finale) return screens.showTheEnd();
     screens.showDelivered({ level, stars, gems: coins, gemTotal, undamaged, hasNext: level.id < LEVELS.length });
   };
-  const beats = level.finale ? ending.beats() : outroBeats(level);
+  const beats = level.finale ? endingBeats() : outroBeats(level);
   if (!beats.length) return results();
   state = 'cinematic';
-  cinematic.play(beats, {
-    anchor: floorPoint,
-    player,
-    onEvent: (name) => ending.event(name),
-    onDone: results,
-  });
+  cinematic.play(beats, { anchor: floorPoint, player, onDone: results });
 }
 
 // Crossing a zone gate: crash into the ocean, or geyser back up to space.
@@ -417,7 +482,7 @@ function collectPower(type) {
   if (type === 'boost') chaser.backOff();
   sound.play(type === 'boost' ? 'boost' : 'power');
   sound.buzz(20);
-  hud.say(pick(POWER_LINES[type]));
+  hud.say(pick(POWER_LINES[type]), { priority: 'low' });
 }
 
 function collectCoins(count) {
@@ -463,6 +528,8 @@ window.addEventListener('pointerdown', () => sound.unlock(), { once: true });
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) pause();
 });
+// Refreshing or closing the page mid-delivery keeps a checkpoint to resume from.
+window.addEventListener('pagehide', () => saveCheckpoint());
 
 const ACTION_SOUNDS = { left: 'lane', right: 'lane', jump: 'jump', slide: 'slide', flip: 'flip' };
 
@@ -502,6 +569,11 @@ function runFrame(realDt) {
   timeScale = wanted < timeScale ? timeScale + (wanted - timeScale) * Math.min(1, realDt * 10) : wanted;
   const dt = realDt * timeScale;
   runTime += dt;
+  checkpointTimer += realDt;
+  if (checkpointTimer > CHECKPOINT_EVERY) {
+    checkpointTimer = 0;
+    saveCheckpoint();
+  }
 
   for (const ended of powers.update(dt)) {
     if (ended === 'boost') player.grace = Math.max(player.grace, 1); // time to find a safe lane
@@ -559,7 +631,7 @@ function runFrame(realDt) {
   }
 
   if (distance > nextLineAt && level?.tutorial !== 'basics') {
-    hud.say(pick(RUN_LINES[zone]));
+    hud.say(pick(RUN_LINES[zone]), { priority: 'low' });
     nextLineAt += 600;
   }
   hud.update({
@@ -594,9 +666,9 @@ function frame(timestamp) {
     if (arrive.time >= ARRIVE_TIME + 0.4) afterArrival();
   } else if (state === 'cinematic') {
     player.update(dt, 0);
-    if (chaserActive() && level && !level.finale) chaser.update(dt, player, 'idle');
+    if (chaserActive() && level) chaser.update(dt, player, 'idle');
     cinematic.update(dt);
-  } else if (state === 'results') {
+  } else if (state === 'results' || state === 'loading') {
     player.update(dt, 0);
   } else if (state === 'dead') {
     deadTime += dt;
@@ -611,9 +683,19 @@ function frame(timestamp) {
     applyAtmosphere(Math.min(1, dt * 2.5));
     tube.update(dt, player.z);
     bursts.update(dt);
-    ending.update(dt);
   }
-  composer.render();
+  // 2.5D cutscenes render at full sharpness whatever the game's quality setting.
+  if (cinematic.onStage !== stageSharp) {
+    stageSharp = cinematic.onStage;
+    if (stageSharp) {
+      renderer.setPixelRatio(CUTSCENE_PIXEL_RATIO);
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    } else {
+      applyQuality(qualityLevel);
+    }
+  }
+  if (stageSharp) stage.render(renderer);
+  else composer.render();
   requestAnimationFrame(frame);
 }
 
@@ -621,7 +703,7 @@ function frame(timestamp) {
 // e.g. game.skipToZone() puts the next zone gate 40 m ahead; game.progress.unlockAll().
 if (import.meta.env.DEV) {
   window.game = {
-    player, track, chaser, powers, zones, voice, sound, settings, progress, cinematic, tutorial, ending,
+    player, track, chaser, powers, zones, voice, sound, settings, progress, cinematic, tutorial, stage,
     collectPower, startLevel, startEndless,
     get state() { return state; },
     get zone() { return zone; },
