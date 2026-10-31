@@ -1,0 +1,20 @@
+{
+  "name": "courier-runner",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview --host",
+    "art": "python tools/gen_images.py",
+    "voice": "python tools/gen_voice.py",
+    "music": "python tools/gen_music.py"
+  },
+  "dependencies": {
+    "three": "^0.187.0"
+  },
+  "devDependencies": {
+    "vite": "^8.3.5"
+  }
+}

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <title>Courier Runner — prototype</title>
+    <meta name="theme-color" content="#05060f" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/png" href="/art/favicon.png" />
+    <link rel="apple-touch-icon" href="/art/app-icon-192.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="menu-art"></div>
+
+    <div id="hud" class="hidden">
+      <div class="stat" id="score">0</div>
+      <div class="stat" id="coins"><img src="/art/icon-coin.webp" alt="" /><span id="coin-count">0</span></div>
+      <div id="powers"></div>
+      <div id="oxygen" class="hidden">
+        <img src="/art/icon-oxygen.webp" alt="" />
+        <div class="bar"><div id="oxygen-fill"></div><span>O₂</span></div>
+      </div>
+      <div id="hint" class="hidden"></div>
+      <div id="security" class="hidden">⚠ SECURITY CLOSE</div>
+      <div id="flip"><div id="flip-fill"></div><span>FLIP</span></div>
+      <button id="pause" class="round" type="button" aria-label="Pause"></button>
+    </div>
+
+    <div id="dispatch" class="hidden">
+      <img class="avatar" src="/art/dispatch.webp" alt="" />
+      <div>
+        <b>DISPATCH</b>
+        <span id="dispatch-text"></span>
+      </div>
+    </div>
+
+    <div id="flash"></div>
+    <div id="banner"></div>
+    <div id="overlay"></div>
+    <button id="mute" class="round" type="button" aria-label="Mute sound">🔊</button>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
