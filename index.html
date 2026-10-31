@@ -3,8 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-    <title>Courier Runner — prototype</title>
-    <meta name="theme-color" content="#05060f" />
+    <title>Courier Runner</title>
+    <meta name="description" content="Riya from Patna rides a truck-art hoverboard through a space station and an alien ocean to deliver one very strange parcel." />
+    <meta name="theme-color" content="#121633" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -12,7 +13,8 @@
     <link rel="icon" type="image/png" href="/art/favicon.png" />
     <link rel="apple-touch-icon" href="/art/app-icon-192.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;800&display=swap" rel="stylesheet" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Yatra+One&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
@@ -20,27 +22,38 @@
     <div id="menu-art"></div>
 
     <div id="hud" class="hidden">
-      <div class="stat" id="score">0</div>
-      <div class="stat" id="coins"><img src="/art/icon-coin.webp" alt="" /><span id="coin-count">0</span></div>
+      <div id="score" class="badge">0</div>
+      <div id="coins"><img src="/art/icon-coin.webp" alt="" /><span id="coin-count">0</span></div>
+      <div id="route" class="hidden">
+        <div id="route-track"></div>
+        <img id="route-marker" src="/art/emblem.webp" alt="" />
+      </div>
       <div id="powers"></div>
       <div id="oxygen" class="hidden">
         <img src="/art/icon-oxygen.webp" alt="" />
-        <div class="bar"><div id="oxygen-fill"></div><span>O₂</span></div>
+        <div class="bar"><div id="oxygen-fill"></div><span>AIR</span></div>
       </div>
-      <div id="hint" class="hidden"></div>
-      <div id="security" class="hidden">⚠ SECURITY CLOSE</div>
+      <div id="security" class="hidden">SECURITY CLOSE</div>
       <div id="flip"><div id="flip-fill"></div><span>FLIP</span></div>
       <button id="pause" class="round" type="button" aria-label="Pause"></button>
     </div>
 
     <div id="dispatch" class="hidden">
-      <img class="avatar" src="/art/dispatch.webp" alt="" />
+      <img class="avatar" id="dispatch-face" src="/art/dispatch.webp" alt="" />
       <div>
-        <b>DISPATCH</b>
+        <b id="dispatch-name">Mishra ji · Dispatch</b>
         <span id="dispatch-text"></span>
       </div>
     </div>
 
+    <div id="coach" class="hidden"></div>
+
+    <div id="cinematic" class="hidden">
+      <div class="bar top"><span id="caption" class="hidden"></span><button id="skip" type="button">Skip ▸▸</button></div>
+      <div class="bar bottom"><div id="subtitle" class="hidden"></div></div>
+    </div>
+
+    <div id="stamp" class="hidden">DELIVERED</div>
     <div id="flash"></div>
     <div id="banner"></div>
     <div id="overlay"></div>

@@ -17,8 +17,11 @@ export class Player {
     this.body = new THREE.Group();
     this.spin = new THREE.Group(); // pivot at the courier's middle, for flips and crashes
     this.spin.position.y = 1;
-    const { board, rider, animate } = buildCourier();
+    const { board, rider, animate, parcelGlow, parcelParts } = buildCourier();
     this.animateCourier = animate;
+    this.parcelGlow = parcelGlow;
+    this.parcelParts = parcelParts;
+    this.pose = null; // set by cutscenes: { idle } or { wave }
     const inner = new THREE.Group();
     inner.position.y = -1;
     inner.add(board, rider);
@@ -169,7 +172,7 @@ export class Player {
     this.body.rotation.z = (this.lane - this.targetLane) * 0.6; // lean into lane changes
     this.spin.visible = this.grace === 0 || Math.floor(this.time * 20) % 2 === 0; // blink while invulnerable
     this.shield.rotation.y += dt;
-    this.animateCourier(dt, this.time, {
+    this.animateCourier(dt, this.time, this.pose ?? {
       lean: Math.max(-1, Math.min(1, this.lane - this.targetLane)),
       airborne: this.jumpY > 0.1 || this.flipping,
       sliding: this.sliding,

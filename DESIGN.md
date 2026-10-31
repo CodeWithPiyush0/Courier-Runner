@@ -3,11 +3,46 @@
 A low-poly 3D endless runner in the browser (Three.js). Cool sci-fi tone with a
 funny streak. Voice lines in Indian English.
 
-## Pitch
-You are a space courier on a hoverboard, racing a package through the tunnels of
-an asteroid station. Mid-run the station cracks open and you plunge into the
-ocean planet below — the run keeps switching between **Space** and **Underwater**
-zones, each with its own feel, threats and resource.
+## Story — "The Mystery Parcel"
+**Riya Kumari**, 19, from Patna (Bihar), rides night shifts for an interplanetary
+delivery app. Mishra ji at Dispatch sends her a humming parcel from orbital
+station Chandra-7 to "Nani, Coral Colony, Ocean Planet Neela". Station security
+thinks it's contraband; a giant anglerfish keeps following it. Twist: it's a
+glowing anglerfish egg Nani ordered as a pet ("some assembly required"), and the
+"monster" was its mother. Litti-chokha for everyone.
+
+**Look:** saffron half-helmet with stickers and goggles, long braid with a
+marigold band, teal courier jacket with saffron stripes, Madhubani-print
+dupatta, indigo cargo pants, white sneakers; hoverboard painted like an Indian
+truck ("HORN OK PLEASE"). The parcel ("FRAGILE · TO: NANI · NEELA") glows from
+its seams. All story text lives in `src/story.js`.
+
+## Deliveries (levels)
+| # | Title | Route | New here |
+|---|---|---|---|
+| 1 | First Shift | space 600 m | guided tutorial (lanes, gems, jump, slide, flip) |
+| 2 | Security Alert | space 900 m | security drone chase, power-ups |
+| 3 | Hull Breach | space 350 → water 650 | ocean, oxygen, anglerfish |
+| 4 | The Deep | water → space → water | — |
+| 5 | Nani's Doorstep | 4 zones, 2200 m | finale cutscene at Nani's cottage |
+
+Each ends at a marigold-garland drop-off: DELIVERED stamp, short outro, then
+up to 3 stars (delivered · ≥60 % of gems · parcel undamaged = no hits).
+Finishing delivery 5 unlocks **Endless**. Progress is saved in the browser.
+
+## Cutscenes and tutorial
+- Letterboxed cutscenes with voiced, portrait subtitles: exterior station
+  shots, 360° orbits round Riya, parcel close-ups, a swoop into the gameplay
+  camera. Tap / Space = next line, Skip / Esc = skip. (`cinematic.js`,
+  `scenes.js`, finale in `ending.js`.)
+- Tutorial: when a lesson obstacle is close, time nearly stops and a gesture
+  (touch) or key prompt waits for the right move; other moves are ignored.
+  Later deliveries show tips for the chaser, power-ups and air. (`tutorial.js`)
+
+## UI style
+Indian truck-art retro-futurism: saffron, rani pink, teal and cream on deep
+indigo; layered painted borders, diamond bands, signboard buttons, Yatra One
+(sign-painter display face) + Baloo 2.
 
 ## Core loop
 Auto-move forward → steer around a 360° tube → dodge, collect, survive → speed
@@ -119,3 +154,4 @@ the frame rate stays under 40 fps.
 3. ✅ Underwater zone + transition + oxygen.
 4. ✅ Real low-poly models, Gemini UI art, Dispatch voice.
 5. ✅ Menus, audio, polish, mobile tuning.
+6. ✅ Story mode: Riya, 5 deliveries, cutscenes, tutorial, truck-art UI.

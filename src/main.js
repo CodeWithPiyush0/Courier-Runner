@@ -5,9 +5,11 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import {
   SPEED_IDLE, SPEED_START, SPEED_MAX, SPEED_GAIN, DIFFICULTY_DISTANCE, BOOST_SPEED, HIT_GRACE,
-  ZONE_PHYSICS, OXYGEN_DRAIN, OXYGEN_PER_BUBBLE, OXYGEN_LOW,
+  ZONE_PHYSICS, OXYGEN_DRAIN, OXYGEN_PER_BUBBLE, OXYGEN_LOW, TUBE_RADIUS, LANES,
 } from './config.js';
 import { settings } from './settings.js';
+import { progress } from './progress.js';
+import { LEVELS } from './story.js';
 import { ZonePlan } from './zones.js';
 import { Tube } from './tube.js';
 import { Player } from './player.js';
@@ -20,6 +22,10 @@ import { Hud } from './hud.js';
 import { Screens } from './screens.js';
 import { Sound } from './audio.js';
 import { Voice } from './voice.js';
+import { Cinematic } from './cinematic.js';
+import { Tutorial } from './tutorial.js';
+import { Ending } from './ending.js';
+import { introBeats, outroBeats } from './scenes.js';
 import {
   START_LINES, RUN_LINES, ENTER_WATER_LINES, ENTER_SPACE_LINES, LOW_OXYGEN_LINES, HIT_LINES, CRASH_LINES,
   CAUGHT_LINES, DROWNED_LINES, POWER_LINES, SHIELD_BREAK_LINES, pick,
@@ -30,10 +36,13 @@ const BEST_KEY = 'courier-runner-best';
 const FOV = 72;
 const BOOST_FOV = 92;
 const TOUCH = window.matchMedia('(pointer: coarse)').matches;
+const STORY_SPEED_RANGE = 22; // story speed = SPEED_START + difficulty * this
+const ARRIVE_TIME = 1.6; // seconds to glide to a stop at the drop-off
+const GEMS_FOR_STAR = 0.6;
 
 // Fog, light and background per zone; the scene eases between them.
 const ATMOSPHERE = {
-  space: { color: 0x05060f, near: 30, far: 135, ambient: 0x6070a0, ambientIntensity: 0.55, sun: 0.7 },
+  space: { color: 0x0b0d24, near: 30, far: 135, ambient: 0x7a70b0, ambientIntensity: 0.6, sun: 0.75 },
   water: { color: 0x05394a, near: 10, far: 90, ambient: 0x4fa8b8, ambientIntensity: 0.9, sun: 0.25 },
 };
 
@@ -45,11 +54,6 @@ const QUALITY_LEVELS = [
   { pixelRatio: 1, bloom: false }, // low
 ];
 const SLOW_FPS = 40;
-
-// Tips shown during the first ever run, at these distances (metres).
-const HINTS = TOUCH
-  ? [[15, 'Swipe ← → to change lane'], [90, 'Swipe ↑ to jump, ↓ to slide'], [170, 'Double-tap to flip to the far wall']]
-  : [[15, '← → to change lane'], [90, '↑ to jump, ↓ to slide'], [170, 'Space to flip to the far wall']];
 
 // ---------- renderer & scene ----------
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -124,31 +128,39 @@ const bursts = new Bursts(scene);
 const sound = new Sound();
 const voice = new Voice(sound);
 const hud = new Hud(voice);
+const cinematic = new Cinematic({ camera, scene, voice });
+const tutorial = new Tutorial(sound);
+const ending = new Ending(scene, bursts);
 const screens = new Screens(sound, {
-  play: () => start(),
-  restart: () => start(),
+  play: (id) => startLevel(id),
+  endless: () => startEndless(),
+  retry: () => retry(),
   resume: () => resume(),
   menu: () => showMenu(),
 });
 const playerPosition = new THREE.Vector3();
 const targetColor = new THREE.Color();
 
-let state = 'menu'; // menu | running | paused | dead
+// menu | cinematic | running | paused | arriving | results | dead
+let state = 'menu';
+let level = null; // the story delivery being played, or null in endless
 let deathCause = null; // crash | caught | drowned
 let zone = 'space';
 let zoneSpeed = 1;
+let timeScale = 1;
 let oxygen = 1;
 let lowOxygenWarned = false;
 let oxygenBeep = 0;
 let startZ = 0;
 let distance = 0;
 let coins = 0;
+let hits = 0;
 let coinStreak = 0;
 let lastCoinTime = 0;
 let runTime = 0;
 let deadTime = 0;
 let nextLineAt = 0;
-let hints = [];
+let arrive = null; // { speed, time } while gliding to a stop at the drop-off
 
 function readBest() {
   try { return Number(localStorage.getItem(BEST_KEY)) || 0; } catch { return 0; }
@@ -159,7 +171,10 @@ function writeBest(value) {
 
 const score = () => Math.floor(distance) + coins * COIN_POINTS;
 const playerPoint = () => player.body.getWorldPosition(playerPosition).clone().add(new THREE.Vector3(0, 0, -1));
+const floorPoint = () => new THREE.Vector3(0, -TUBE_RADIUS, player.z); // under Riya when she's on the floor lane
 const water = () => zone === 'water';
+const chaserActive = () => !level || level.chaser;
+const routeLength = () => (level ? level.zones.reduce((sum, [, m]) => sum + m, 0) : Infinity);
 
 // Ease fog, background and lights towards the current zone (t = 1 snaps).
 function applyAtmosphere(t) {
@@ -182,47 +197,91 @@ function setZone(next) {
 
 // ---------- game flow ----------
 
-function showMenu() {
-  state = 'menu';
-  if (player.dead) player.reset();
-  setZone('space');
-  applyAtmosphere(1);
-  hud.hide();
-  sound.setPaused(false);
-  sound.stopVoice();
-  sound.playMusic('menu');
-  screens.showMenu(readBest());
-}
-
-function start() {
-  sound.unlock();
-  if (player.dead) player.reset();
-  zones.reset(player.z);
+// Reset the world for a fresh run along `route` (null = endless).
+function setupRun(route) {
+  cinematic.finish();
+  ending.clear();
+  tutorial.stop();
+  player.reset();
+  zones.reset(player.z, route);
   tube.reset(player.z);
-  track.reset(player.z);
+  track.reset(player.z, { powers: !level || level.powers, auto: !level?.tutorial || level.tutorial !== 'basics' });
   chaser.reset();
+  chaser.object.visible = false; // shown again by its first update, if it's in this run
   powers.reset();
   bursts.clear();
-  setZone('space');
+  setZone(zones.zoneAt(player.z - 1));
   applyAtmosphere(1);
-  zoneSpeed = 1;
+  zoneSpeed = ZONE_PHYSICS[zone].speedFactor;
   player.setShield(false);
   camera.fov = FOV;
   camera.updateProjectionMatrix();
   startZ = player.z;
   distance = 0;
   coins = 0;
+  hits = 0;
   coinStreak = 0;
   runTime = 0;
   oxygen = 1;
+  timeScale = 1;
+  arrive = null;
   nextLineAt = 400;
-  hints = readBest() ? [] : [...HINTS];
-  state = 'running';
-  screens.hide();
-  hud.show();
+  hud.setRoute(route);
+  hud.showStamp(false);
   sound.setPaused(false);
-  sound.playMusic('space');
+  sound.playMusic(zone);
+}
+
+function showMenu() {
+  state = 'menu';
+  level = null;
+  setupRun(null);
+  hud.hide();
+  sound.stopVoice();
+  sound.playMusic('menu');
+  screens.showTitle();
+}
+
+// Start a story delivery. The intro plays unless this is a retry.
+function startLevel(id, { intro = true } = {}) {
+  sound.unlock();
+  level = LEVELS[id - 1];
+  setupRun(level.zones);
+  screens.hide();
+  hud.hide();
+  if (!intro) return beginRun();
+  if (level.chaser) chaser.chase = 1; // security / the fish is right there in the intro
+  state = 'cinematic';
+  cinematic.play(introBeats(level), {
+    anchor: floorPoint,
+    player,
+    onDone: () => {
+      progress.markSeen(level.id);
+      chaser.reset();
+      beginRun();
+    },
+  });
+}
+
+function startEndless() {
+  sound.unlock();
+  level = null;
+  setupRun(null);
+  screens.hide();
+  beginRun();
   hud.say(pick(START_LINES));
+}
+
+function retry() {
+  if (level) startLevel(level.id, { intro: false });
+  else startEndless();
+}
+
+function beginRun() {
+  state = 'running';
+  hud.show();
+  tutorial.start(level?.tutorial, track);
+  if (!chaserActive()) chaser.backOff();
 }
 
 function pause() {
@@ -245,31 +304,71 @@ function die(cause) {
   deathCause = cause;
   deadTime = 0;
   player.dead = true;
+  tutorial.stop();
   sound.play({ crash: 'crash', caught: water() ? 'chomp' : 'crash', drowned: 'drown' }[cause], { water: water() });
   sound.play('gameover');
   sound.buzz([60, 40, 140]);
-  const best = readBest();
-  const final = score();
-  if (final > best) writeBest(final);
   const quips = { crash: CRASH_LINES[zone], caught: CAUGHT_LINES[zone], drowned: DROWNED_LINES };
   const quip = pick(quips[cause]);
   hud.hide();
   sound.setPaused(true); // music drops back under the score card
-  screens.showGameOver({
-    score: final,
-    distance: Math.floor(distance),
-    coins,
-    best: Math.max(best, final),
-    newBest: final > best,
-    quip,
-  });
+  if (level) {
+    screens.showFailed({ level, distance: Math.floor(distance), quip });
+  } else {
+    const best = readBest();
+    const final = score();
+    if (final > best) writeBest(final);
+    screens.showEndlessOver({
+      score: final, distance: Math.floor(distance), coins, best: Math.max(best, final), newBest: final > best, quip,
+    });
+  }
   voice.play(quip);
+}
+
+// Reached the drop-off: glide to a stop on the floor, stamp it, then the outro.
+function reachDropOff(speed) {
+  state = 'arriving';
+  arrive = { speed, time: 0 };
+  tutorial.stop();
+  chaser.backOff();
+  powers.reset();
+  player.targetLane = Math.round(player.targetLane / LANES) * LANES; // back down to the floor
+  hud.hide();
+  hud.showStamp(true);
+  sound.play('power');
+  sound.buzz([30, 60, 30]);
+  if (level.finale) ending.build(new THREE.Vector3(0, -TUBE_RADIUS, player.z - (speed * ARRIVE_TIME) / 2), player);
+}
+
+function afterArrival() {
+  player.lane = player.targetLane;
+  hud.showStamp(false);
+  const gemTotal = track.coinsSpawned;
+  const undamaged = hits === 0;
+  const stars = 1 + (coins >= gemTotal * GEMS_FOR_STAR ? 1 : 0) + (undamaged ? 1 : 0);
+  progress.complete(level.id, stars);
+  const results = () => {
+    state = 'results';
+    player.pose = { idle: true };
+    sound.setPaused(true);
+    if (level.finale) return screens.showTheEnd();
+    screens.showDelivered({ level, stars, gems: coins, gemTotal, undamaged, hasNext: level.id < LEVELS.length });
+  };
+  const beats = level.finale ? ending.beats() : outroBeats(level);
+  if (!beats.length) return results();
+  state = 'cinematic';
+  cinematic.play(beats, {
+    anchor: floorPoint,
+    player,
+    onEvent: (name) => ending.event(name),
+    onDone: results,
+  });
 }
 
 // Crossing a zone gate: crash into the ocean, or geyser back up to space.
 function enterZone(next) {
   setZone(next);
-  chaser.backOff();
+  if (chaserActive()) chaser.backOff();
   oxygen = 1;
   lowOxygenWarned = false;
   const wet = next === 'water';
@@ -277,10 +376,10 @@ function enterZone(next) {
   sound.play(wet ? 'splash' : 'geyser');
   sound.playMusic(next);
   sound.buzz(80);
-  hud.flash(wet ? '#2f8fd0' : '#ffffff');
-  hud.banner(wet ? 'OCEAN' : 'SPACE');
+  hud.flash(wet ? '#3fc1b0' : '#fff1d6');
+  hud.banner(wet ? 'Ocean!' : 'Space!');
   hud.hideDispatch();
-  hud.say(pick(wet ? ENTER_WATER_LINES : ENTER_SPACE_LINES), 1.5); // after the banner
+  hud.say(pick(wet ? ENTER_WATER_LINES : ENTER_SPACE_LINES), { delay: 1.5 }); // after the banner
 }
 
 // An obstacle the player failed to clear. Boost and the post-hit grace smash
@@ -288,27 +387,29 @@ function enterZone(next) {
 function handleHit(item) {
   if (powers.has('boost') || player.grace > 0 || powers.has('shield')) {
     track.smash(item);
-    const debris = water() ? 0xff6f91 : 0xff8a2a;
+    const debris = water() ? 0xff6f91 : 0xf59e1b;
     bursts.spawn(item.object.position.clone().lerp(playerPoint(), 0.5), { color: debris, count: 30, speed: 8, size: 0.3 });
     sound.play('smash');
     if (powers.has('boost') || player.grace > 0) return;
     powers.end('shield');
+    hits++;
     player.grace = HIT_GRACE * 2;
     sound.play('shield');
     sound.buzz(30);
-    hud.flash('#35e8ff');
+    hud.flash('#3fc1b0');
     hud.say(pick(SHIELD_BREAK_LINES));
     return;
   }
   if (OBSTACLES[item.type].effect === 'crash') return die('crash');
-  if (chaser.dangerous) return die('caught');
+  if (chaserActive() && chaser.dangerous) return die('caught');
+  hits++;
   player.stumble();
-  chaser.alert();
-  bursts.spawn(playerPoint(), { color: water() ? 0xff6fd8 : 0xff2a4d, count: 24, speed: 6, size: 0.15, life: 0.5 });
+  if (chaserActive()) chaser.alert();
+  bursts.spawn(playerPoint(), { color: water() ? 0xff6fd8 : 0xd6246e, count: 24, speed: 6, size: 0.15, life: 0.5 });
   sound.play('zap', { water: water() });
   sound.buzz(45);
-  hud.flash('#ff2a4d');
-  hud.say(pick(HIT_LINES[zone]));
+  hud.flash('#d6246e');
+  if (chaserActive()) hud.say(pick(HIT_LINES[zone]));
 }
 
 function collectPower(type) {
@@ -369,8 +470,15 @@ new Input((action, source) => {
   sound.unlock();
   if (action === 'mute') return toggleMute();
 
+  if (state === 'cinematic') {
+    if (action === 'pause') return cinematic.finish(); // Esc skips
+    if (['tap', 'flip', 'confirm'].includes(action)) cinematic.next(); // tap / Space: next line
+    return;
+  }
+
   if (state === 'running') {
     if (action === 'pause') return pause();
+    if (!tutorial.allow(action, distance)) return;
     if (player.act(action) && ACTION_SOUNDS[action]) sound.play(ACTION_SOUNDS[action], { water: water() });
     return;
   }
@@ -388,8 +496,13 @@ new Input((action, source) => {
 // ---------- loop ----------
 const timer = new THREE.Timer();
 
-function runFrame(dt) {
+function runFrame(realDt) {
+  // The tutorial can slow time right down while it waits for the player.
+  const wanted = tutorial.update(realDt, { player, distance, zone });
+  timeScale = wanted < timeScale ? timeScale + (wanted - timeScale) * Math.min(1, realDt * 10) : wanted;
+  const dt = realDt * timeScale;
   runTime += dt;
+
   for (const ended of powers.update(dt)) {
     if (ended === 'boost') player.grace = Math.max(player.grace, 1); // time to find a safe lane
   }
@@ -399,11 +512,18 @@ function runFrame(dt) {
 
   const prevZ = player.z;
   zoneSpeed += (ZONE_PHYSICS[zone].speedFactor - zoneSpeed) * Math.min(1, dt * 2);
-  const baseSpeed = Math.min(SPEED_MAX, SPEED_START + distance * SPEED_GAIN) * zoneSpeed;
-  player.update(dt, baseSpeed * player.speedFactor + (boosting ? BOOST_SPEED : 0));
+  const difficulty = level
+    ? level.difficulty[0] + (level.difficulty[1] - level.difficulty[0]) * Math.min(1, distance / routeLength())
+    : Math.min(1, distance / DIFFICULTY_DISTANCE);
+  const baseSpeed = level
+    ? SPEED_START + difficulty * STORY_SPEED_RANGE
+    : Math.min(SPEED_MAX, SPEED_START + distance * SPEED_GAIN);
+  const speed = baseSpeed * zoneSpeed * player.speedFactor + (boosting ? BOOST_SPEED : 0);
+  player.update(dt, speed);
   distance = startZ - player.z;
-  track.update(dt, player.z, Math.min(1, distance / DIFFICULTY_DISTANCE));
-  chaser.update(dt, player, 'chase');
+  track.update(dt, player.z, difficulty);
+  if (chaserActive()) chaser.update(dt, player, 'chase');
+  else chaser.object.visible = false;
 
   const zoneNow = zones.zoneAt(player.z);
   if (zoneNow !== zone) enterZone(zoneNow);
@@ -419,6 +539,8 @@ function runFrame(dt) {
   if (result.power) collectPower(result.power);
   if (result.hit) handleHit(result.hit);
   if (state !== 'running') return;
+
+  if (level && player.z <= zones.finishZ) return reachDropOff(speed);
 
   if (water()) {
     oxygen = Math.max(0, oxygen - OXYGEN_DRAIN * dt);
@@ -436,12 +558,19 @@ function runFrame(dt) {
     }
   }
 
-  if (hints.length && distance > hints[0][0]) hud.hint(hints.shift()[1]);
-  if (distance > nextLineAt) {
+  if (distance > nextLineAt && level?.tutorial !== 'basics') {
     hud.say(pick(RUN_LINES[zone]));
     nextLineAt += 600;
   }
-  hud.update(score(), coins, player.flipCharge, powers, chaser.dangerous, water() ? oxygen : null);
+  hud.update({
+    score: score(),
+    coins,
+    flipCharge: player.flipCharge,
+    powers,
+    chaserClose: chaserActive() && chaser.dangerous,
+    oxygen: water() ? oxygen : null,
+    progress: level ? distance / routeLength() : null,
+  });
 
   const fov = boosting ? BOOST_FOV : FOV;
   if (Math.abs(camera.fov - fov) > 0.1) {
@@ -458,6 +587,17 @@ function frame(timestamp) {
   if (state === 'running') {
     runFrame(dt);
     watchFrameRate(rawDt);
+  } else if (state === 'arriving') {
+    arrive.time += dt;
+    const speed = arrive.speed * Math.max(0, 1 - arrive.time / ARRIVE_TIME);
+    player.update(dt, speed);
+    if (arrive.time >= ARRIVE_TIME + 0.4) afterArrival();
+  } else if (state === 'cinematic') {
+    player.update(dt, 0);
+    if (chaserActive() && level && !level.finale) chaser.update(dt, player, 'idle');
+    cinematic.update(dt);
+  } else if (state === 'results') {
+    player.update(dt, 0);
   } else if (state === 'dead') {
     deadTime += dt;
     player.updateDead(dt, Math.max(0, 0.6 - deadTime));
@@ -471,25 +611,41 @@ function frame(timestamp) {
     applyAtmosphere(Math.min(1, dt * 2.5));
     tube.update(dt, player.z);
     bursts.update(dt);
+    ending.update(dt);
   }
   composer.render();
   requestAnimationFrame(frame);
 }
 
 // Handy for tuning from the browser console while running `npm run dev`.
-// e.g. game.skipToZone() puts the next zone gate 40 m ahead.
+// e.g. game.skipToZone() puts the next zone gate 40 m ahead; game.progress.unlockAll().
 if (import.meta.env.DEV) {
   window.game = {
-    player, track, chaser, powers, zones, voice, sound, settings, collectPower,
+    player, track, chaser, powers, zones, voice, sound, settings, progress, cinematic, tutorial, ending,
+    collectPower, startLevel, startEndless,
     get state() { return state; },
     get zone() { return zone; },
+    get level() { return level; },
     get quality() { return qualityLevel; },
+    get timeScale() { return timeScale; },
     get oxygen() { return oxygen; },
     set oxygen(value) { oxygen = value; },
+    get distance() { return distance; },
     skipToZone(ahead = 40) {
       // Rebuild the plan so the next gate is `ahead` metres away, keeping the current zone.
+      zones.reset(player.z);
       zones.bounds = zone === 'space' ? [player.z - ahead] : [player.z + 1, player.z - ahead];
       track.reset(player.z);
+      tube.reset(player.z);
+    },
+    // Jump to `metres` before the drop-off of the current delivery.
+    skipToFinish(metres = 60) {
+      const shift = player.z - (zones.finishZ + metres);
+      startZ -= shift;
+      player.z -= shift;
+      const spawned = track.coinsSpawned;
+      track.reset(player.z, { powers: false });
+      track.coinsSpawned = spawned;
       tube.reset(player.z);
     },
   };

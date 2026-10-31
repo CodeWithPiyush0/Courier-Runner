@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { LANE_WIDTH, LANES, CORNER_RADIUS } from './config.js';
+import { LANE_WIDTH, LANES, CORNER_RADIUS, TUBE_RADIUS } from './config.js';
 
 // Low-poly models, built from Three.js primitives. Every model faces -z (the
 // run direction) and stands on y = 0. Models with motion get an
@@ -28,16 +28,24 @@ function canvasTexture(size, draw) {
   return texture;
 }
 
-// ---------- the courier ----------
+// ---------- Riya, the courier ----------
+
+const SKIN = 0x9b6a47;
+const HAIR = 0x17110d;
+const SAFFRON = 0xf59e1b;
+const TEAL = 0x0f6b6b;
+const RANI = 0xd6246e;
+const INDIGO = 0x2c2f6b;
+const CREAM = 0xfff1d6;
 
 function parcelLabel() {
   return canvasTexture(256, (ctx, s) => {
-    ctx.fillStyle = '#d9822b';
+    ctx.fillStyle = '#c98b4a';
     ctx.fillRect(0, 0, s, s);
     ctx.fillStyle = '#e8cf9a'; // packing tape
     ctx.fillRect(s * 0.42, 0, s * 0.16, s);
     ctx.save();
-    ctx.translate(s / 2, s * 0.45);
+    ctx.translate(s / 2, s * 0.42);
     ctx.rotate(-0.12);
     ctx.strokeStyle = '#c0182b';
     ctx.lineWidth = 8;
@@ -49,16 +57,93 @@ function parcelLabel() {
     ctx.fillText('FRAGILE', 0, 3);
     ctx.restore();
     ctx.fillStyle = '#3a2410';
-    ctx.font = 'bold 21px sans-serif';
+    ctx.font = 'bold 20px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('▲ THIS SIDE UP ▲', s / 2, s * 0.86);
+    ctx.fillText('TO: NANI · NEELA', s / 2, s * 0.8);
+    ctx.fillText('▲ THIS SIDE UP ▲', s / 2, s * 0.92);
+  });
+}
+
+// Madhubani-style print for the dupatta: rani pink with yellow fish and dots.
+function dupattaPrint() {
+  return canvasTexture(128, (ctx, s) => {
+    ctx.fillStyle = '#d6246e';
+    ctx.fillRect(0, 0, s, s);
+    ctx.strokeStyle = '#ffd23d';
+    ctx.fillStyle = '#ffd23d';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(4, 4, s - 8, s - 8);
+    for (const [x, y] of [[32, 40], [96, 88]]) { // little fish, a common Madhubani motif
+      ctx.beginPath();
+      ctx.ellipse(x, y, 18, 9, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(x + 16, y);
+      ctx.lineTo(x + 28, y - 9);
+      ctx.lineTo(x + 28, y + 9);
+      ctx.fill();
+    }
+    for (let i = 0; i < 6; i++) {
+      ctx.beginPath();
+      ctx.arc(20 + i * 18, s - 18, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+}
+
+// The hoverboard's deck, painted like an Indian truck, lettering near the tail.
+function truckArtDeck() {
+  return canvasTexture(256, (ctx, s) => {
+    ctx.fillStyle = '#f59e1b';
+    ctx.fillRect(0, 0, s, s);
+    ctx.fillStyle = '#0f6b6b';
+    ctx.fillRect(0, 0, s * 0.1, s);
+    ctx.fillRect(s * 0.9, 0, s * 0.1, s);
+    ctx.fillStyle = '#d6246e';
+    for (let y = 8; y < s; y += 22) { // painted diamonds down both edges
+      for (const x of [s * 0.05, s * 0.95]) {
+        ctx.beginPath();
+        ctx.moveTo(x, y - 7);
+        ctx.lineTo(x + 6, y);
+        ctx.lineTo(x, y + 7);
+        ctx.lineTo(x - 6, y);
+        ctx.fill();
+      }
+    }
+    ctx.fillStyle = '#fff1d6';
+    ctx.beginPath(); // a lotus in the middle
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      ctx.ellipse(s / 2 + Math.cos(a) * 16, s * 0.55 + Math.sin(a) * 16, 16, 8, a, 0, Math.PI * 2);
+    }
+    ctx.fill();
+    ctx.fillStyle = '#d6246e';
+    ctx.beginPath();
+    ctx.arc(s / 2, s * 0.55, 10, 0, Math.PI * 2);
+    ctx.fill();
+    // The canvas top lands on the tail and appears vertically flipped from the
+    // camera behind, so the lettering is drawn flipped to read the right way up.
+    ctx.save();
+    ctx.translate(s / 2, s * 0.17);
+    ctx.scale(1, -1);
+    ctx.fillStyle = '#121633';
+    ctx.font = 'bold 26px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('HORN OK', 0, -14);
+    ctx.fillText('PLEASE', 0, 14);
+    ctx.restore();
   });
 }
 
 function hoverboard() {
-  const deck = standard(0x232a4a, { metalness: 0.5, roughness: 0.4 });
-  const trim = standard(0x35e8ff, { emissive: 0x35e8ff, emissiveIntensity: 0.6 });
-  const glow = basic(0x35e8ff);
+  const paint = truckArtDeck();
+  paint.repeat.set(1 / 1.2, 1 / 2.1); // deck shape spans x ±0.6, y -1.1..0.98
+  paint.offset.set(0.5, 1.1 / 2.1);
+  const deckTop = standard(0xffffff, { map: paint, roughness: 0.6 });
+  const deckSide = standard(RANI, { roughness: 0.5 });
+  const metal = standard(0x3a3550, { metalness: 0.6, roughness: 0.4 });
+  const flameMat = basic(0xffb347);
 
   // Top-view outline: pointed nose at -z, squared tail at +z.
   const outline = new THREE.Shape();
@@ -74,19 +159,18 @@ function hoverboard() {
     .rotateX(Math.PI / 2).translate(0, 0.12, 0);
 
   const board = new THREE.Group();
-  board.add(mesh(deckGeo, deck));
-  board.add(box(0.12, 0.02, 1.7, trim, 0, 0.13, 0.05)); // racing stripe
-  board.add(mesh(new THREE.PlaneGeometry(0.95, 1.7).rotateX(Math.PI / 2), glowHalo(0x35e8ff, 0.5), 0, -0.02, 0.1));
+  board.add(mesh(deckGeo, [deckTop, deckSide]));
+  board.add(mesh(new THREE.PlaneGeometry(0.95, 1.7).rotateX(Math.PI / 2), glowHalo(0x46e0c0, 0.45), 0, -0.02, 0.1));
 
   const thrusters = [];
   for (const x of [-0.3, 0.3]) {
-    board.add(mesh(new THREE.CylinderGeometry(0.11, 0.14, 0.3, 6).rotateX(Math.PI / 2), deck, x, 0.06, 1.0));
-    const flame = mesh(new THREE.ConeGeometry(0.1, 0.45, 6).rotateX(Math.PI / 2), glow, x, 0.06, 1.35);
+    board.add(mesh(new THREE.CylinderGeometry(0.11, 0.14, 0.3, 6).rotateX(Math.PI / 2), metal, x, 0.06, 1.0));
+    const flame = mesh(new THREE.ConeGeometry(0.1, 0.45, 6).rotateX(Math.PI / 2), flameMat, x, 0.06, 1.35);
     board.add(flame);
     thrusters.push(flame);
   }
   for (const x of [-0.5, 0.5]) {
-    const fin = mesh(new THREE.ConeGeometry(0.12, 0.35, 3).rotateX(Math.PI / 2), deck, x, 0.04, 0.85);
+    const fin = mesh(new THREE.ConeGeometry(0.12, 0.35, 3).rotateX(Math.PI / 2), deckSide, x, 0.04, 0.85);
     fin.rotation.z = Math.sign(x) * 0.5;
     board.add(fin);
   }
@@ -94,101 +178,173 @@ function hoverboard() {
   return board;
 }
 
+// A chain of segments that swings behind (braid, dupatta tails). Returns the segments.
+function chain(parent, anchor, count, buildSegment) {
+  const segments = [];
+  let holder = parent;
+  let at = anchor;
+  for (let i = 0; i < count; i++) {
+    const segment = new THREE.Group();
+    segment.position.copy(at);
+    const { mesh: piece, length } = buildSegment(i);
+    segment.add(piece);
+    holder.add(segment);
+    segments.push(segment);
+    holder = segment;
+    at = new THREE.Vector3(0, -length, 0);
+  }
+  return segments;
+}
+
 export function buildCourier() {
-  const suit = standard(0xd5dbe6, { roughness: 0.6 });
-  const dark = standard(0x2a3150, { roughness: 0.5, metalness: 0.4 });
-  const accent = standard(0xff8a2a, { roughness: 0.7 });
-  const visorMat = standard(0x0b2a3a, { emissive: 0x35e8ff, emissiveIntensity: 0.35, metalness: 0.8, roughness: 0.2 });
-  const glow = basic(0x35e8ff);
-  const scarfMat = standard(0xff3d9a, { emissive: 0x5a0f30 });
+  const skin = standard(SKIN, { roughness: 0.8 });
+  const hair = standard(HAIR, { roughness: 0.9 });
+  const jacket = standard(TEAL, { roughness: 0.7 });
+  const stripe = standard(SAFFRON, { emissive: SAFFRON, emissiveIntensity: 0.25 });
+  const pants = standard(INDIGO, { roughness: 0.8 });
+  const shoe = standard(CREAM, { roughness: 0.6 });
+  const dark = standard(0x221d2e, { roughness: 0.6 });
+  const helmetMat = standard(SAFFRON, { roughness: 0.45, metalness: 0.1 });
+  const tealTrim = standard(TEAL, { roughness: 0.45 });
+  const lens = standard(0x2a6b7a, { metalness: 0.7, roughness: 0.15, emissive: 0x0b3a40 });
+  const white = standard(0xc9bfb0, { roughness: 0.6 }); // a darker cream, so close-ups don't trip the bloom
+  const pupil = standard(0x1a120c, { roughness: 0.3 });
+  const marigold = standard(0xff8c1a, { emissive: 0x5a2a00 });
+  const dupatta = standard(0xffffff, { map: dupattaPrint(), roughness: 0.8, side: THREE.DoubleSide });
 
   const board = hoverboard();
-
   const rider = new THREE.Group();
   rider.position.y = 0.13;
 
-  // Legs, knees slightly bent, boots.
+  // Sneakers, legs, hips.
   for (const side of [-1, 1]) {
-    rider.add(box(0.26, 0.16, 0.4, dark, side * 0.2, 0.08, -0.02));
-    const leg = box(0.22, 0.66, 0.24, suit, side * 0.2, 0.47, 0);
+    rider.add(box(0.24, 0.14, 0.4, shoe, side * 0.18, 0.07, -0.03));
+    rider.add(box(0.25, 0.04, 0.42, stripe, side * 0.18, 0.02, -0.03));
+    const leg = box(0.22, 0.64, 0.24, pants, side * 0.18, 0.46, 0);
     leg.rotation.x = 0.12;
     rider.add(leg);
-    rider.add(box(0.24, 0.12, 0.26, dark, side * 0.2, 0.4, -0.05)); // knee pad
+    rider.add(box(0.06, 0.18, 0.16, pants, side * 0.3, 0.52, 0)); // cargo pocket
   }
-  rider.add(box(0.62, 0.18, 0.36, dark, 0, 0.84, 0)); // belt
-  rider.add(box(0.14, 0.12, 0.05, accent, 0, 0.84, -0.19)); // buckle
+  rider.add(box(0.54, 0.2, 0.32, pants, 0, 0.84, 0));
 
-  const torso = box(0.7, 0.58, 0.42, suit, 0, 1.2, 0);
-  rider.add(torso);
-  rider.add(box(0.5, 0.3, 0.06, dark, 0, 1.24, -0.22)); // chest plate
-  rider.add(box(0.36, 0.04, 0.07, glow, 0, 1.3, -0.24));
+  // Jacket with saffron reflective stripes.
+  rider.add(box(0.6, 0.56, 0.36, jacket, 0, 1.18, 0));
+  rider.add(box(0.62, 0.05, 0.38, stripe, 0, 1.02, 0));
+  rider.add(box(0.62, 0.05, 0.38, stripe, 0, 1.24, 0));
+  rider.add(box(0.34, 0.1, 0.3, jacket, 0, 1.47, 0)); // collar
 
-  // Arms pivot at the shoulders and are held out for balance.
+  // Arms: rolled teal sleeves, bare forearms, fingerless gloves. Pivot at the shoulder.
   const arms = [];
   for (const side of [-1, 1]) {
     const arm = new THREE.Group();
-    arm.position.set(side * 0.43, 1.42, 0);
-    arm.add(box(0.18, 0.5, 0.2, suit, 0, -0.25, 0));
-    arm.add(box(0.2, 0.12, 0.22, accent, 0, -0.12, 0)); // sleeve band
-    arm.add(mesh(new THREE.IcosahedronGeometry(0.12, 0), dark, 0, -0.55, 0)); // glove
+    arm.position.set(side * 0.38, 1.4, 0);
+    arm.add(box(0.17, 0.3, 0.18, jacket, 0, -0.14, 0));
+    arm.add(box(0.18, 0.06, 0.19, stripe, 0, -0.27, 0)); // rolled cuff
+    arm.add(box(0.13, 0.26, 0.14, skin, 0, -0.42, 0));
+    arm.add(box(0.14, 0.12, 0.15, dark, 0, -0.6, 0));
     arm.side = side;
     rider.add(arm);
     arms.push(arm);
   }
 
-  // Helmet with visor and a blinking antenna.
-  rider.add(mesh(new THREE.CylinderGeometry(0.14, 0.17, 0.1, 6), dark, 0, 1.53, 0)); // neck ring
-  const helmet = mesh(new THREE.IcosahedronGeometry(0.3, 1), suit, 0, 1.8, 0);
-  rider.add(helmet);
-  const visor = mesh(new THREE.SphereGeometry(0.27, 8, 4, Math.PI * 0.6, Math.PI * 0.8, Math.PI * 0.3, Math.PI * 0.35), visorMat, 0, 1.8, -0.04);
-  rider.add(visor);
-  rider.add(box(0.03, 0.32, 0.03, dark, 0.15, 2.1, 0.1));
-  const beacon = mesh(new THREE.SphereGeometry(0.05, 6, 4), basic(0xff3d3d), 0.15, 2.27, 0.1);
-  rider.add(beacon);
+  // Head: face toward -z.
+  const head = new THREE.Group();
+  head.position.set(0, 1.7, 0);
+  rider.add(head);
+  rider.add(mesh(new THREE.CylinderGeometry(0.08, 0.09, 0.14, 6), skin, 0, 1.55, 0)); // neck
+  head.add(mesh(new THREE.IcosahedronGeometry(0.21, 1).scale(0.92, 1.05, 0.95), skin));
+  const eyes = new THREE.Group();
+  for (const side of [-1, 1]) {
+    eyes.add(box(0.055, 0.032, 0.02, white, side * 0.072, 0.01, -0.19));
+    eyes.add(box(0.03, 0.034, 0.02, pupil, side * 0.072, 0.01, -0.2));
+    const brow = box(0.08, 0.015, 0.02, hair, side * 0.075, 0.06, -0.19);
+    brow.rotation.z = side * -0.15;
+    eyes.add(brow);
+  }
+  head.add(eyes);
+  head.add(mesh(new THREE.ConeGeometry(0.025, 0.06, 4).rotateX(-Math.PI / 2), skin, 0, -0.04, -0.21)); // nose
+  const smile = box(0.08, 0.015, 0.02, basic(0x5a1e1e), 0, -0.1, -0.18);
+  head.add(smile);
+  head.add(mesh(new THREE.CircleGeometry(0.012, 6), basic(0x7a0a1e), 0, 0.09, -0.2).rotateY(Math.PI)); // bindi
+  // Hair: back and sides of the head, under the helmet. The sphere's gap is
+  // centred on phi = 1.5π, which is the -z side: her face.
+  head.add(mesh(new THREE.SphereGeometry(0.225, 10, 6, Math.PI * 1.8, Math.PI * 1.4, 0.3, 2.2), hair, 0, 0, 0.01));
 
-  // The package: on the back, label facing the camera.
-  const labelTexture = parcelLabel();
-  const label = standard(0xffffff, {
-    map: labelTexture, emissiveMap: labelTexture, emissive: 0xffffff, emissiveIntensity: 0.35, roughness: 0.9,
-  });
-  const cardboard = standard(0xd9822b, { roughness: 0.9 });
-  const parcelGeo = new THREE.BoxGeometry(0.66, 0.62, 0.44);
-  const parcel = new THREE.Mesh(parcelGeo, [cardboard, cardboard, cardboard, cardboard, label, cardboard]);
-  parcel.position.set(0, 1.18, 0.44);
-  rider.add(parcel);
-  for (const x of [-0.24, 0.24]) rider.add(box(0.07, 0.62, 0.5, dark, x, 1.22, 0.2)); // straps
-
-  // Scarf: a chain of segments flapping off to one side (clear of the parcel label).
-  const scarf = [];
-  let parent = rider;
-  let anchor = new THREE.Vector3(0.26, 1.55, 0.12);
-  for (let i = 0; i < 3; i++) {
-    const segment = new THREE.Group();
-    segment.position.copy(anchor);
-    segment.add(box(0.16 - i * 0.02, 0.05, 0.3, scarfMat, 0, 0, 0.15));
-    parent.add(segment);
-    scarf.push(segment);
-    parent = segment;
-    anchor = new THREE.Vector3(0, 0, 0.3);
+  // Saffron half-helmet with a teal stripe, stickers and goggles pushed up.
+  head.add(mesh(new THREE.SphereGeometry(0.245, 12, 6, 0, Math.PI * 2, 0, Math.PI * 0.42), helmetMat, 0, 0.04, 0));
+  head.add(mesh(new THREE.SphereGeometry(0.25, 12, 6, Math.PI * 1.45, Math.PI * 0.1, 0, Math.PI * 0.42), tealTrim, 0, 0.04, 0));
+  head.add(mesh(new THREE.TorusGeometry(0.245, 0.02, 4, 16).rotateX(Math.PI / 2), tealTrim, 0, 0.1, 0)); // rim
+  for (const [x, y, z, color] of [[0.17, 0.15, 0.08, RANI], [-0.16, 0.17, 0.1, 0x46e0c0], [0.05, 0.22, 0.15, CREAM]]) {
+    const sticker = box(0.07, 0.07, 0.01, standard(color), x, y, z);
+    sticker.lookAt(new THREE.Vector3(x * 3, y * 3, z * 3));
+    head.add(sticker);
+  }
+  for (const side of [-1, 1]) {
+    head.add(mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.04, 8).rotateX(Math.PI / 2 - 0.5), lens, side * 0.08, 0.2, -0.17));
   }
 
-  // pose: { lean (-1..1), airborne, sliding, speed (0..1) }
+  // The braid: out the back of the helmet, swinging, with a marigold band.
+  const braid = chain(head, new THREE.Vector3(-0.05, -0.08, 0.2), 6, (i) => {
+    const piece = i === 4
+      ? mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.08, 6), marigold, 0, -0.04, 0)
+      : mesh(new THREE.OctahedronGeometry(0.07 - i * 0.006, 0).scale(1, 1.4, 1), hair, 0, -0.05, 0);
+    return { mesh: piece, length: 0.1 };
+  });
+
+  // Dupatta: a loop round the neck and two printed tails that fly behind.
+  rider.add(mesh(new THREE.TorusGeometry(0.17, 0.05, 4, 10).rotateX(Math.PI / 2), dupatta, 0, 1.5, 0));
+  const tails = [-1, 1].map((side) => chain(rider, new THREE.Vector3(side * 0.12, 1.48, 0.12), 3, () => (
+    { mesh: mesh(new THREE.PlaneGeometry(0.14, 0.26), dupatta, 0, -0.12, 0), length: 0.24 }
+  )));
+
+  // The mystery parcel on her back: label facing the camera, light leaking from the seams.
+  const labelTexture = parcelLabel();
+  const label = standard(0xffffff, {
+    map: labelTexture, emissiveMap: labelTexture, emissive: 0xffffff, emissiveIntensity: 0.3, roughness: 0.9,
+  });
+  const cardboard = standard(0xc98b4a, { roughness: 0.9 });
+  const parcelParts = [];
+  const parcel = mesh(new THREE.BoxGeometry(0.58, 0.52, 0.4), [cardboard, cardboard, cardboard, cardboard, label, cardboard], 0, 1.08, 0.4);
+  parcelParts.push(parcel);
+  // Light leaking from under the lid: a thin glowing ring just below the top edge.
+  const seamGlow = basic(0x46ffd0, { transparent: true, opacity: 0.6 });
+  for (const [w, d, x, z] of [[0.6, 0.025, 0, 0.6], [0.6, 0.025, 0, 0.2], [0.025, 0.42, 0.3, 0.4], [0.025, 0.42, -0.3, 0.4]]) {
+    parcelParts.push(box(w, 0.025, d, seamGlow, x, 1.28, z));
+  }
+  for (const x of [-0.2, 0.2]) parcelParts.push(box(0.06, 0.6, 0.44, dark, x, 1.18, 0.2)); // straps
+  rider.add(...parcelParts);
+
+  let blink = 2;
+  // pose: { lean (-1..1), airborne, sliding, speed (0..1), idle, wave }
   const animate = (dt, time, pose) => {
     for (const arm of arms) {
-      const out = pose.airborne ? 1.2 : 0.65;
-      arm.rotation.z = arm.side * (out + Math.sin(time * 3 + arm.side) * 0.08) - pose.lean * 0.5;
-      arm.rotation.x = pose.sliding ? -0.8 : -0.15;
+      if (pose.wave && arm.side === 1) {
+        arm.rotation.set(0, 0, 2.6 + Math.sin(time * 9) * 0.35);
+        continue;
+      }
+      const out = pose.idle ? 0.18 : pose.airborne ? 1.2 : 0.65;
+      arm.rotation.z = arm.side * (out + Math.sin(time * 3 + arm.side) * 0.08) - (pose.lean ?? 0) * 0.5;
+      arm.rotation.x = pose.sliding ? -0.8 : pose.idle ? 0 : -0.15;
     }
-    scarf.forEach((segment, i) => {
-      const flap = 8 + pose.speed * 10;
-      segment.rotation.x = 0.25 + Math.sin(time * flap - i * 0.9) * (0.18 + i * 0.05);
-      segment.rotation.y = (i === 0 ? 0.9 : 0.1) + Math.sin(time * flap * 0.7 - i) * 0.25;
+    const wind = pose.idle ? 2 : 8 + (pose.speed ?? 0) * 10;
+    const lift = pose.idle ? 0.15 : 0.9 + (pose.speed ?? 0) * 0.4; // how far the wind lifts things back (+z)
+    braid.forEach((segment, i) => {
+      segment.rotation.x = -lift * (i === 0 ? 1 : 0.12) + Math.sin(time * wind * 0.6 - i * 0.7) * (0.08 + i * 0.03);
+      segment.rotation.z = Math.sin(time * wind * 0.4 - i) * 0.08 - (pose.lean ?? 0) * 0.2;
     });
-    for (const flame of board.thrusters) flame.scale.z = 0.8 + Math.random() * 0.5 + pose.speed * 0.6;
-    beacon.visible = Math.floor(time * 2) % 2 === 0;
+    tails.forEach((tail, t) => tail.forEach((segment, i) => {
+      segment.rotation.x = -lift * (i === 0 ? 1.1 : 0.1) + Math.sin(time * wind - i * 0.9 + t) * (0.15 + i * 0.06);
+      segment.rotation.y = Math.sin(time * wind * 0.7 - i + t * 2) * 0.3;
+    }));
+    for (const flame of board.thrusters) flame.scale.z = 0.8 + Math.random() * 0.5 + (pose.speed ?? 0) * 0.6;
+    seamGlow.opacity = 0.35 + 0.3 * (0.5 + 0.5 * Math.sin(time * 4)); // the parcel hums
+    blink -= dt;
+    eyes.scale.y = blink < 0.12 ? 0.15 : 1;
+    if (blink < 0) blink = 2 + Math.random() * 3;
+    head.rotation.y = pose.idle ? Math.sin(time * 0.7) * 0.25 : 0;
   };
 
-  return { board, rider, animate };
+  return { board, rider, animate, parcelGlow: seamGlow, parcelParts };
 }
 
 // ---------- chasers ----------
@@ -544,7 +700,160 @@ export function buildTrackMakers() {
       return g;
     }),
 
+    finish: buildFinishArch,
+
     'gate@water': gate(0x1f7fd6, 0.55, 0x9ff3ff), // hull breach: a wall of sea water
     'gate@space': gate(0xdffaff, 0.35, 0xffffff), // geyser: foam blasting back up to space
   };
+}
+
+// ---------- delivery point and the finale ----------
+
+function signTexture(lines, { bg = '#f59e1b', fg = '#121633', border = '#d6246e', width = 512, height = 160 } = {}) {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, width, height);
+  ctx.strokeStyle = border;
+  ctx.lineWidth = 12;
+  ctx.strokeRect(10, 10, width - 20, height - 20);
+  ctx.fillStyle = border;
+  for (let x = 30; x < width - 20; x += 26) { // painted dots along the edges
+    ctx.beginPath(); ctx.arc(x, 26, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x, height - 26, 4, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.fillStyle = fg;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `bold ${Math.floor(height / (lines.length + 1.2))}px "Yatra One", "Baloo 2", sans-serif`;
+  lines.forEach((line, i) => ctx.fillText(line, width / 2, (height / (lines.length + 1)) * (i + 1)));
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+// A ring of marigold garlands with a painted sign: the drop-off point.
+function buildFinishArch() {
+  const g = new THREE.Group();
+  const marigold = [standard(0xff8c1a, { emissive: 0x7a3a00 }), standard(0xffc21a, { emissive: 0x7a5a00 })];
+  const flower = new THREE.IcosahedronGeometry(0.16, 0);
+  for (let i = 0; i < 56; i++) {
+    const a = (i / 56) * Math.PI * 2;
+    g.add(mesh(flower, marigold[i % 2], Math.cos(a) * (CORNER_RADIUS - 0.35), Math.sin(a) * (CORNER_RADIUS - 0.35), 0));
+  }
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 1.06), basic(0xffffff, { map: signTexture(['DELIVERY POINT']), side: THREE.DoubleSide }));
+  sign.position.y = TUBE_RADIUS - 1.4;
+  g.add(sign);
+  return g;
+}
+
+export function buildNani() {
+  const skin = standard(0xa9744f, { roughness: 0.8 });
+  const saree = standard(0xf3e6c8, { roughness: 0.8 });
+  const border = standard(0xb3122e, { roughness: 0.7 });
+  const shawl = standard(0x6b1a2a, { roughness: 0.9 });
+  const silver = standard(0xdcdce4, { roughness: 0.6 });
+  const steel = standard(0xc9ced6, { metalness: 0.9, roughness: 0.25 });
+
+  const nani = new THREE.Group();
+  const body = new THREE.Group(); // modelled facing -z like everyone else; nani turns it round
+  nani.add(body);
+  body.add(mesh(new THREE.CylinderGeometry(0.24, 0.44, 1.0, 8), saree, 0, 0.5, 0));
+  body.add(mesh(new THREE.CylinderGeometry(0.445, 0.445, 0.09, 8), border, 0, 0.05, 0));
+  body.add(mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.45, 8), saree, 0, 1.2, 0));
+  body.add(mesh(new THREE.CylinderGeometry(0.28, 0.31, 0.24, 8), shawl, 0, 1.32, 0));
+  const pallu = box(0.1, 0.9, 0.36, border, 0.2, 1.0, 0.02); // saree end over the shoulder
+  pallu.rotation.z = 0.35;
+  body.add(pallu);
+
+  const head = new THREE.Group();
+  head.position.y = 1.62;
+  head.add(mesh(new THREE.IcosahedronGeometry(0.19, 1), skin));
+  head.add(mesh(new THREE.SphereGeometry(0.2, 10, 6, 0, Math.PI * 2, 0, 1.3), silver, 0, 0.02, 0.02)); // hair
+  head.add(mesh(new THREE.SphereGeometry(0.1, 8, 6), silver, 0, 0.1, 0.17)); // bun
+  for (const side of [-1, 1]) {
+    head.add(mesh(new THREE.TorusGeometry(0.05, 0.012, 4, 10), standard(0x3a2a20), side * 0.065, 0.01, -0.17));
+    head.add(box(0.03, 0.03, 0.01, basic(0x1a120c), side * 0.065, 0.01, -0.175));
+  }
+  head.add(box(0.07, 0.014, 0.01, basic(0x5a1e1e), 0, -0.08, -0.175)); // smile
+  head.add(mesh(new THREE.CircleGeometry(0.018, 8), basic(0xb3122e), 0, 0.08, -0.185).rotateY(Math.PI)); // bindi
+  body.add(head);
+
+  const arm = new THREE.Group(); // right arm holding a steel tumbler of chai
+  arm.position.set(0.27, 1.35, 0);
+  arm.add(box(0.12, 0.42, 0.13, shawl, 0, -0.2, 0));
+  arm.add(box(0.1, 0.12, 0.1, skin, 0, -0.46, -0.05));
+  arm.add(mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.15, 8), steel, 0, -0.42, -0.15));
+  arm.rotation.x = -0.9;
+  body.add(arm);
+  body.add(box(0.12, 0.42, 0.13, shawl, -0.27, 1.15, 0));
+
+  body.rotation.y = Math.PI; // face +z, towards Riya
+  nani.animate = (dt, time, cheer) => {
+    head.rotation.z = Math.sin(time * 1.4) * 0.06;
+    body.rotation.y = Math.PI + Math.sin(time * 0.8) * 0.08;
+    arm.rotation.x = cheer ? -2.4 + Math.sin(time * 8) * 0.3 : -0.9;
+  };
+  return nani;
+}
+
+// Nani's coral cottage, door facing +z (towards Riya arriving).
+export function buildCottage() {
+  const coral = standard(0xe0607e, { emissive: 0x2a0a12 });
+  const wood = standard(0x7a4a26, { roughness: 0.9 });
+  const glow = basic(0xffd27a);
+  const g = new THREE.Group();
+  g.add(mesh(new THREE.SphereGeometry(2.2, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), coral));
+  g.add(box(0.9, 1.5, 0.3, wood, 0, 0.75, 2.12));
+  for (const side of [-1, 1]) {
+    const porthole = mesh(new THREE.CircleGeometry(0.32, 10), glow, side * 1.25, 1.15, 1.72);
+    porthole.lookAt(side * 4, 1.15, 5);
+    g.add(porthole);
+  }
+  const marigold = standard(0xff8c1a, { emissive: 0x7a3a00 });
+  for (let i = 0; i <= 10; i++) { // garland over the door
+    const a = Math.PI * (i / 10);
+    g.add(mesh(new THREE.IcosahedronGeometry(0.09, 0), marigold, Math.cos(a) * 0.6, 1.55 + Math.sin(a) * 0.25, 2.3));
+  }
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.56), basic(0xffffff, { map: signTexture(['NANI KA GHAR']) }));
+  sign.position.set(0, 2.05, 2.05);
+  sign.rotation.x = -0.25;
+  g.add(sign);
+  g.add(mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.7, 6), coral, 0.9, 2.1, -0.4)); // chimney
+  for (const [x, z, h] of [[-2.4, 1, 0.9], [2.5, 0.6, 1.2], [-2.0, -1.5, 0.7]]) {
+    const branch = mesh(new THREE.ConeGeometry(0.15, h, 5).translate(0, h / 2, 0), standard(0xffb347, { emissive: 0x3a250b }), x, 0, z);
+    branch.rotation.z = x > 0 ? -0.3 : 0.3;
+    g.add(branch);
+  }
+  return g;
+}
+
+// The opened parcel with the glowing egg inside, which hatches.
+export function buildGift() {
+  const cardboard = standard(0xc98b4a, { roughness: 0.9 });
+  const g = new THREE.Group();
+  const size = 0.5;
+  g.add(box(size, 0.04, size, cardboard, 0, 0.02, 0));
+  for (const [x, z, w, d] of [[0, size / 2, size, 0.04], [0, -size / 2, size, 0.04], [size / 2, 0, 0.04, size], [-size / 2, 0, 0.04, size]]) {
+    g.add(box(w, size * 0.9, d, cardboard, x, size * 0.45, z));
+  }
+  const lid = new THREE.Group(); // hinged at the back edge
+  lid.position.set(0, size * 0.9, -size / 2);
+  lid.add(box(size + 0.04, 0.04, size + 0.04, cardboard, 0, 0, size / 2));
+  g.add(lid);
+
+  const eggMat = basic(0xa8ffe4);
+  const egg = new THREE.Group();
+  egg.position.y = 0.35;
+  const shells = [0, 1].map((i) => {
+    const shell = mesh(new THREE.SphereGeometry(0.17, 10, 6, 0, Math.PI * 2, i ? Math.PI / 2 : 0, Math.PI / 2).scale(1, 1.3, 1), eggMat);
+    egg.add(shell);
+    return shell;
+  });
+  const halo = mesh(new THREE.SphereGeometry(0.34, 10, 8), glowHalo(0x46ffd0, 0.35));
+  egg.add(halo);
+  g.add(egg);
+  return { group: g, lid, egg, shells, halo };
 }

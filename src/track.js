@@ -66,13 +66,25 @@ export class Track {
     this.reset(0);
   }
 
-  reset(playerZ) {
+  // options.powers: spawn power-ups. options.auto: spawn patterns by itself
+  // (the tutorial turns this off and places things by hand).
+  reset(playerZ, { powers = true, auto = true } = {}) {
     for (const item of this.items) this.release(item);
     this.items = [];
+    this.powers = powers;
+    this.auto = auto;
+    this.coinsSpawned = 0; // for the delivery's gem star
     this.nextZ = playerZ - FIRST_ROW_DISTANCE;
     this.nextPowerZ = playerZ - POWER_FIRST;
+    this.finishPlaced = false;
     this.gateIndex = 0;
     while (this.zones.boundary(this.gateIndex) >= playerZ) this.gateIndex++;
+  }
+
+  // Hand spawning back to the track (after the tutorial), starting at z.
+  resumeSpawning(z) {
+    this.auto = true;
+    this.nextZ = z;
   }
 
   add(type, laneIndex, z, height = 0, zone = this.zones.zoneAt(z)) {
@@ -81,6 +93,7 @@ export class Track {
     if (!object.parent) this.scene.add(object);
     object.visible = true;
     placeOnWall(object, laneIndex, height, z);
+    if (type === 'coin') this.coinsSpawned++;
     this.items.push({
       type, kind: kindOf(type), skin, lane: lane(laneIndex), z, height, object, done: false, pulled: false,
     });
@@ -102,7 +115,16 @@ export class Track {
   }
 
   update(dt, playerZ, difficulty) {
-    while (this.nextZ > playerZ - SPAWN_AHEAD) {
+    while (this.auto && this.nextZ > playerZ - SPAWN_AHEAD) {
+      // A story delivery ends at the drop-off point: clear track, then the finish arch.
+      const finishZ = this.zones.finishZ;
+      if (this.nextZ - ZONE_CLEARANCE < finishZ) {
+        if (!this.finishPlaced) this.add('finish', 0, finishZ, TUBE_RADIUS);
+        this.finishPlaced = true;
+        this.auto = false;
+        break;
+      }
+
       // Clear track before each zone gate, then the gate itself.
       const gateZ = this.zones.boundary(this.gateIndex);
       if (this.nextZ - ZONE_CLEARANCE < gateZ) {
@@ -117,7 +139,7 @@ export class Track {
       const end = this.nextZ - pattern.build(this.nextZ, difficulty);
       const gap = 26 - 12 * difficulty + Math.random() * 6;
 
-      if (end < this.nextPowerZ) {
+      if (this.powers && end < this.nextPowerZ) {
         this.add(POWER_TYPES[rand(POWER_TYPES.length)], rand(LANES), end - gap / 2);
         const [min, max] = POWER_EVERY;
         this.nextPowerZ = end - (min + Math.random() * (max - min));
