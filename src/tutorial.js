@@ -6,41 +6,48 @@ const PLACE_AHEAD = 42; // metres ahead a lesson's obstacle appears
 const PROMPT_DISTANCE = 13; // metres before it when time (almost) stops
 const FREEZE = 0.03; // time scale while waiting for the player
 const KEYS = { lane: ['←', '→'], jump: ['↑'], slide: ['↓'], flip: ['SPACE'] };
+const ICONS = { battery: '/art/icon-battery.webp', coins: '/art/icon-coin.webp' };
 
-const ring = (type) => (track, player, z) => {
-  for (let l = 0; l < LANES; l++) track.add(type, l, z);
+// Something across every lane there is at z (3 on the road, 8 in a tunnel).
+const across = (type) => (track, player, z) => {
+  for (const l of track.lanesAt(z)) track.add(type, l, z);
 };
 
 // Lessons are lists of steps:
 //   wait — place something, nearly freeze time when it's close and show a
 //          prompt until the player does `actions` (or is already safe).
 //   tip  — show a short tip; time keeps running (slow: briefly slows it).
-// Steps start at a distance (`at`) or on an event (`when`: water | power).
+// Steps start at a distance (`at`) or on an event (`when`: tunnel | power).
 const LESSONS = {
   basics: [
+    // On the road: lanes, tips, hop, duck.
     {
       kind: 'wait', id: 'lane', at: 20, actions: ['left', 'right'],
       place: (track, player, z) => track.add('wall', player.laneIndex, z),
       safe: (player, step) => player.laneIndex !== step.lane,
     },
     { kind: 'tip', id: 'coins', gap: 30, place: (track, player, z) => track.coinTrail(player.laneIndex, z + 20, 6) },
-    { kind: 'wait', id: 'jump', actions: ['jump'], place: ring('low') },
-    { kind: 'wait', id: 'slide', actions: ['slide'], place: ring('high') },
+    { kind: 'wait', id: 'jump', actions: ['jump'], place: across('low') },
+    { kind: 'wait', id: 'slide', actions: ['slide'], place: across('high') },
+    { kind: 'tip', id: 'goal', resume: true },
+    // In the shortcut: the walls, the flip, the torch.
+    { kind: 'tip', id: 'tunnel', when: 'tunnel', slow: true, gap: 30 },
     {
       kind: 'wait', id: 'flip', actions: ['flip'],
       place: (track, player, z) => {
+        track.clearBetween(z + 25, z - 20); // nothing else near the lesson
         for (let l = 0; l < LANES; l++) if (l !== (player.laneIndex + 4) % LANES) track.add('wall', l, z);
       },
       safe: (player, step) => player.laneIndex === (step.lane + 4) % LANES,
     },
-    { kind: 'tip', id: 'goal', resume: true },
+    { kind: 'tip', id: 'battery' },
   ],
   chase: [
     { kind: 'tip', id: 'chase', at: 30 },
     { kind: 'tip', id: 'powers', when: 'power' },
   ],
-  water: [
-    { kind: 'tip', id: 'water', when: 'water', slow: true },
+  tunnel: [
+    { kind: 'tip', id: 'battery', when: 'tunnel', slow: true },
   ],
 };
 
@@ -104,7 +111,7 @@ export class Tutorial {
   }
 
   ready(step, distance, zone) {
-    if (step.when === 'water') return zone === 'water';
+    if (step.when === 'tunnel') return zone === 'tunnel';
     if (step.when === 'power') return this.track.items.some((i) => i.kind === 'power' && !i.done);
     return distance >= this.nextAt;
   }
@@ -131,8 +138,7 @@ export class Tutorial {
     let visual = '';
     if (waiting && TOUCH && gesture) visual = `<div class="gesture ${gesture}"><i></i></div>`;
     else if (waiting && KEYS[step.id]) visual = `<div class="keys">${KEYS[step.id].map((k) => `<kbd>${k}</kbd>`).join('')}</div>`;
-    else if (step.id === 'water') visual = '<img class="coach-icon" src="/art/icon-oxygen.webp" alt="">';
-    else if (step.id === 'coins') visual = '<img class="coach-icon" src="/art/icon-coin.webp" alt="">';
+    else if (ICONS[step.id]) visual = `<img class="coach-icon" src="${ICONS[step.id]}" alt="" onerror="this.remove()">`;
     this.el.className = waiting ? 'waiting' : 'tip';
     this.el.innerHTML = `${visual}<p>${text}</p>`;
     clearTimeout(this.hideTimer);

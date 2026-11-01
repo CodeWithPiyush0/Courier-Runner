@@ -1,4 +1,4 @@
-import { OXYGEN_LOW } from './config.js';
+import { BATTERY_LOW } from './config.js';
 import { CHARACTERS } from './story.js';
 
 const $ = (id) => document.getElementById(id);
@@ -21,12 +21,13 @@ export class Hud {
     this.flipFill = $('flip-fill');
     this.radio = $('dispatch');
     this.radioFace = $('dispatch-face');
+    this.radioFace.addEventListener('error', () => { this.radioFace.src = '/art/emblem.webp'; }); // portrait not painted yet
     this.radioName = $('dispatch-name');
     this.radioText = $('dispatch-text');
     this.security = $('security');
     this.flashEl = $('flash');
-    this.oxygen = $('oxygen');
-    this.oxygenFill = $('oxygen-fill');
+    this.battery = $('battery');
+    this.batteryFill = $('battery-fill');
     this.bannerEl = $('banner');
     this.route = $('route');
     this.routeTrack = $('route-track');
@@ -61,18 +62,15 @@ export class Hud {
       .join('');
   }
 
-  setZone(zone) {
-    this.security.textContent = zone === 'water' ? 'FISH CLOSE!' : 'SECURITY CLOSE!';
-  }
-
   // progress: 0..1 along the route (story), or null in endless.
-  // oxygen: 0..1 underwater, null in space (bar hidden).
-  update({ score, coins, flipCharge, powers, chaserClose, oxygen, progress }) {
-    this.oxygen.classList.toggle('hidden', oxygen === null);
-    if (oxygen !== null) {
-      this.oxygenFill.style.width = `${oxygen * 100}%`;
-      this.oxygen.classList.toggle('low', oxygen < OXYGEN_LOW);
+  // battery: the phone torch, 0..1 in a tunnel, null on the road (meter hidden).
+  update({ score, coins, flipCharge, powers, chaserClose, battery, progress }) {
+    this.battery.classList.toggle('hidden', battery === null);
+    if (battery !== null) {
+      this.batteryFill.style.width = `${battery * 100}%`;
+      this.battery.classList.toggle('low', battery < BATTERY_LOW);
     }
+    this.flip.classList.toggle('hidden', battery === null); // flips only work in tunnels
     if (progress !== null) this.routeMarker.style.left = `${Math.min(1, progress) * 100}%`;
     this.score.textContent = score;
     for (const [type, { el, bar }] of Object.entries(this.powerBars)) {

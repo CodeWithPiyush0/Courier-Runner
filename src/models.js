@@ -1,10 +1,11 @@
 import * as THREE from 'three';
-import { LANE_WIDTH, LANES, CORNER_RADIUS, TUBE_RADIUS } from './config.js';
+import { LANES, CORNER_RADIUS, TUBE_RADIUS, ROAD_LANE_WIDTH, LANE_WIDTH, CAMERA_PITCH } from './config.js';
 
-// Low-poly track props (obstacles, pickups, gates, the drop-off), built from
-// Three.js primitives. Every model faces -z (the run direction) and stands on
-// y = 0. Models with motion get an `animate(time)` method. (Riya and the
-// chasers are painted sprites: rider.js, chaser.js.)
+// Track props. Obstacles are painted sprites (public/art/props/, made by
+// tools/gen_props.py) in the cutscenes' animated style, so they read at a
+// glance; pickups, tunnel mouths and the drop-off are built from Three.js
+// primitives. Every prop faces the player (who comes from +z) and stands on
+// y = 0. Props that move get `animate(time)`.
 
 const standard = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, flatShading: true, ...extra });
 const basic = (color, extra = {}) => new THREE.MeshBasicMaterial({ color, ...extra });
@@ -19,297 +20,252 @@ function mesh(geometry, material, x = 0, y = 0, z = 0) {
 }
 
 const box = (w, h, d, material, x, y, z) => mesh(new THREE.BoxGeometry(w, h, d), material, x, y, z);
+const pick = (list) => list[Math.floor(Math.random() * list.length)];
 
-function canvasTexture(size, draw) {
+function canvasTexture(width, height, draw) {
   const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = size;
-  draw(canvas.getContext('2d'), size);
+  canvas.width = width;
+  canvas.height = height;
+  draw(canvas.getContext('2d'), width, height);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 4;
   return texture;
 }
 
-// ---------- track objects ----------
+// A painted sign: coloured board, border, one or more lines of text.
+export function signTexture(lines, { bg = '#f59e1b', fg = '#121633', border = '#d6246e', width = 512, height = 160 } = {}) {
+  return canvasTexture(width, height, (ctx, w, h) => {
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = border;
+    ctx.lineWidth = Math.max(6, h * 0.07);
+    ctx.strokeRect(ctx.lineWidth / 2, ctx.lineWidth / 2, w - ctx.lineWidth, h - ctx.lineWidth);
+    ctx.fillStyle = fg;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `bold ${Math.floor(h / (lines.length + 1.1))}px "Baloo 2", "Noto Sans Devanagari", "Nirmala UI", sans-serif`;
+    lines.forEach((line, i) => ctx.fillText(line, w / 2, (h / (lines.length + 1)) * (i + 1), w * 0.92));
+  });
+}
 
-function hazardPanel() {
-  return canvasTexture(256, (ctx, s) => {
-    ctx.fillStyle = '#c8571d';
-    ctx.fillRect(0, 0, s, s);
-    ctx.strokeStyle = '#7a300e';
-    ctx.lineWidth = 10;
-    ctx.strokeRect(10, 10, s - 20, s - 20);
+// ---------- obstacles: painted sprites ----------
+
+const TUNNEL_TINT = 0xe8dfcf; // sprites are unlit; a little dimmer in the tunnel's torchlight
+const spriteLoader = new THREE.TextureLoader();
+const spriteTextures = {};
+const shadowGeo = new THREE.CircleGeometry(0.5, 20).rotateX(-Math.PI / 2);
+const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28, depthWrite: false });
+
+function spriteTexture(name) {
+  spriteTextures[name] ??= spriteLoader.load(`/art/props/${name}.webp`, (texture) => {
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = 4;
+    for (const fit of texture.fits ?? []) fit();
+  });
+  return spriteTextures[name];
+}
+
+// One painted prop: `width` metres wide (height from the picture), standing on
+// the floor, or hanging with its top at `top` metres. `copies` repeats it side
+// by side across a wide lane. A soft shadow grounds anything on the floor.
+function spriteProp(name, { width, copies = 1, top = null, tunnel = false }) {
+  const g = new THREE.Group();
+  const texture = spriteTexture(name);
+  const material = new THREE.MeshBasicMaterial({
+    map: texture, transparent: true, alphaTest: 0.05, side: THREE.DoubleSide, color: tunnel ? TUNNEL_TINT : 0xffffff,
+  });
+  const each = width / copies;
+  for (let i = 0; i < copies; i++) {
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).translate(0, 0.5, 0), material);
+    plane.rotation.x = CAMERA_PITCH;
+    plane.position.x = (i - (copies - 1) / 2) * each;
+    const fit = () => {
+      const height = (each * texture.image.height) / texture.image.width;
+      plane.scale.set(each, height, 1);
+      plane.position.y = top === null ? 0 : top - height;
+    };
+    if (texture.image) fit();
+    else (texture.fits ??= []).push(fit);
+    g.add(plane);
+  }
+  if (top === null) {
+    const shadow = new THREE.Mesh(shadowGeo, shadowMat);
+    shadow.scale.set(width * 1.05, 1, 1.1);
+    shadow.position.y = 0.02;
+    g.add(shadow);
+  }
+  return g;
+}
+
+// Pick one of several props (name, options) for a type of obstacle.
+const sprites = (choices, extra = {}) => () => {
+  const [name, options] = pick(choices);
+  return spriteProp(name, { ...options, ...extra });
+};
+
+const ROAD = ROAD_LANE_WIDTH;
+const TUNNEL = LANE_WIDTH;
+const OBSTACLES = {
+  'wall@road': sprites([
+    ['ob-auto', { width: ROAD * 0.95 }], ['ob-auto', { width: ROAD * 0.95 }], ['ob-cow', { width: ROAD * 1.1 }],
+    ['ob-cart', { width: ROAD * 1.05 }], ['ob-barricade', { width: ROAD * 1.0 }],
+  ]),
+  'low@road': sprites([['ob-bricks', { width: ROAD * 1.0 }], ['ob-cones', { width: ROAD * 0.85 }]]),
+  'high@road': sprites([['ob-banner', { width: ROAD * 1.0 }], ['ob-boom', { width: ROAD * 1.0 }]]),
+  'wall@tunnel': sprites([['tn-junk', { width: TUNNEL * 0.8 }]], { tunnel: true }),
+  'low@tunnel': sprites([['tn-pipe', { width: TUNNEL * 0.95, copies: 2 }]], { tunnel: true }),
+  'high@tunnel': sprites([['tn-wires', { width: TUNNEL * 0.95, copies: 3, top: 3.4 }]], { tunnel: true }),
+};
+
+
+// ---------- pickups ----------
+
+const ringGeo = new THREE.TorusGeometry(0.7, 0.05, 4, 16);
+
+// A power-up: a spinning icon inside a glowing ring, floating at chest height.
+const pickup = (color, buildIcon) => () => {
+  const g = new THREE.Group();
+  const icon = buildIcon();
+  icon.position.y = 1.2;
+  g.add(icon, mesh(ringGeo, basic(color), 0, 1.2));
+  g.spinner = icon;
+  return g;
+};
+
+function rupeeCoin() {
+  const face = canvasTexture(128, 128, (ctx, w, h) => {
+    ctx.fillStyle = '#f2b531';
+    ctx.beginPath(); ctx.arc(w / 2, h / 2, w / 2, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#a8761a'; ctx.lineWidth = 8;
+    ctx.beginPath(); ctx.arc(w / 2, h / 2, w / 2 - 10, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#8a5a10'; ctx.font = 'bold 76px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('₹', w / 2, h / 2 + 4);
+  });
+  const faceMat = standard(0xffffff, { map: face, metalness: 0.5, roughness: 0.35, flatShading: false });
+  const edge = standard(0xc8901f, { metalness: 0.6, roughness: 0.3 });
+  return new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.06, 20).rotateX(Math.PI / 2), [edge, faceMat, faceMat]);
+}
+
+function upiCard() {
+  const qr = canvasTexture(128, 160, (ctx, w, h) => {
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#5f259f'; ctx.fillRect(0, 0, w, 30);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 22px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('UPI', w / 2, 23);
     ctx.fillStyle = '#111';
-    ctx.fillRect(0, s * 0.38, s, s * 0.24);
-    ctx.fillStyle = '#ffd23d';
-    for (let x = -s; x < s * 2; x += 44) {
-      ctx.beginPath();
-      ctx.moveTo(x, s * 0.38);
-      ctx.lineTo(x + 22, s * 0.38);
-      ctx.lineTo(x + 22 - s * 0.24, s * 0.62);
-      ctx.lineTo(x - s * 0.24, s * 0.62);
-      ctx.fill();
-    }
-    ctx.fillStyle = '#5a240c';
-    for (const [x, y] of [[26, 26], [s - 26, 26], [26, s - 26], [s - 26, s - 26]]) {
-      ctx.beginPath();
-      ctx.arc(x, y, 7, 0, Math.PI * 2);
-      ctx.fill();
+    for (let y = 0; y < 10; y++) for (let x = 0; x < 10; x++) if (Math.random() > 0.5) ctx.fillRect(14 + x * 10, 40 + y * 10, 10, 10);
+    for (const [x, y] of [[14, 40], [84, 40], [14, 110]]) {
+      ctx.fillStyle = '#111'; ctx.fillRect(x, y, 30, 30);
+      ctx.fillStyle = '#fff'; ctx.fillRect(x + 6, y + 6, 18, 18);
+      ctx.fillStyle = '#111'; ctx.fillRect(x + 11, y + 11, 8, 8);
     }
   });
+  return box(0.5, 0.64, 0.04, standard(0xffffff, { map: qr, emissive: 0x222222 }));
 }
 
-// Shared materials whose glow pulses (lasers, stings); see animateTrackMaterials.
-const pulsing = [];
-
-export function animateTrackMaterials(time) {
-  for (const { material, base, speed } of pulsing) material.opacity = base * (0.7 + 0.3 * Math.sin(time * speed));
+function helmet() {
+  const g = new THREE.Group();
+  g.add(mesh(new THREE.SphereGeometry(0.36, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), standard(0xd62828, { metalness: 0.2, roughness: 0.4 })));
+  g.add(mesh(new THREE.SphereGeometry(0.37, 12, 4, Math.PI * 1.2, Math.PI * 0.6, Math.PI * 0.25, Math.PI * 0.2), standard(0x223344, { metalness: 0.7, roughness: 0.1 })));
+  g.add(mesh(new THREE.TorusGeometry(0.36, 0.03, 4, 16).rotateX(Math.PI / 2), standard(0x1a1a1a)));
+  return g;
 }
 
-function laser(height, color, postHeight) {
-  const edge = LANE_WIDTH * 0.46;
-  const post = standard(0x3a405c, { metalness: 0.5 });
-  const capMat = basic(color);
-  const core = basic(0xffffff);
-  const halo = glowHalo(color, 0.55);
-  pulsing.push({ material: halo, base: 0.55, speed: 14 });
-  const beamGeo = new THREE.CylinderGeometry(0.035, 0.035, LANE_WIDTH * 0.92, 6).rotateZ(Math.PI / 2);
-  const haloGeo = new THREE.CylinderGeometry(0.14, 0.14, LANE_WIDTH * 0.92, 8).rotateZ(Math.PI / 2);
-  const postGeo = new THREE.BoxGeometry(0.22, postHeight, 0.22);
-  const capGeo = new THREE.OctahedronGeometry(0.16, 0);
+function chai() {
+  const g = new THREE.Group();
+  g.add(mesh(new THREE.CylinderGeometry(0.2, 0.15, 0.42, 10), standard(0xffffff, { transparent: true, opacity: 0.45, roughness: 0.1 })));
+  g.add(mesh(new THREE.CylinderGeometry(0.18, 0.14, 0.32, 10), standard(0xb0703a), 0, -0.04, 0));
+  for (let i = 0; i < 3; i++) g.add(mesh(new THREE.SphereGeometry(0.07, 6, 4), glowHalo(0xffffff, 0.4), (i - 1) * 0.08, 0.32 + i * 0.1, 0)); // steam
+  return g;
+}
 
-  return () => {
-    const g = new THREE.Group();
-    g.add(mesh(beamGeo, core, 0, height), mesh(haloGeo, halo, 0, height));
-    for (const side of [-1, 1]) {
-      g.add(mesh(postGeo, post, side * edge, postHeight / 2));
-      g.add(mesh(capGeo, capMat, side * edge, height));
+function battery() {
+  const g = new THREE.Group();
+  g.add(mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.6, 12), standard(0x1f9d55, { metalness: 0.3 })));
+  g.add(mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.18, 12), standard(0x1a1a1a), 0, -0.22, 0));
+  g.add(mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.08, 8), standard(0xc89a3a, { metalness: 0.8 }), 0, 0.34, 0));
+  g.add(mesh(new THREE.SphereGeometry(0.45, 10, 8), glowHalo(0x8fff9f, 0.18)));
+  return g;
+}
+
+// ---------- tunnel mouths and the drop-off ----------
+
+// A concrete wall across the whole road with an octagonal tunnel mouth in it.
+function portal(signLines, signColors) {
+  const g = new THREE.Group();
+  const outline = new THREE.Shape();
+  outline.moveTo(-16, -TUBE_RADIUS - 0.2);
+  outline.lineTo(16, -TUBE_RADIUS - 0.2);
+  outline.lineTo(16, 12);
+  outline.lineTo(-16, 12);
+  outline.closePath();
+  const hole = new THREE.Path();
+  for (let i = 0; i <= LANES; i++) {
+    const a = ((i + 0.5) / LANES) * Math.PI * 2;
+    const x = Math.sin(a) * CORNER_RADIUS;
+    const y = -Math.cos(a) * CORNER_RADIUS;
+    if (i === 0) hole.moveTo(x, y); else hole.lineTo(x, y);
+  }
+  outline.holes.push(hole);
+  const concrete = standard(0x8f8a82, { roughness: 1, side: THREE.DoubleSide });
+  g.add(new THREE.Mesh(new THREE.ShapeGeometry(outline), concrete));
+  g.add(mesh(new THREE.TorusGeometry(CORNER_RADIUS, 0.3, 4, LANES).rotateZ(Math.PI / LANES), standard(0x5f5a52), 0, 0, 0.1));
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 1.2), basic(0xffffff, { map: signTexture(signLines, signColors), side: THREE.DoubleSide }));
+  sign.position.set(0, CORNER_RADIUS + 1.2, 0.15);
+  g.add(sign);
+  return g;
+}
+
+// The drop-off: a gateway strung with marigold garlands and a painted sign.
+function buildFinishArch() {
+  const g = new THREE.Group();
+  const post = standard(0xd6246e);
+  const marigold = [standard(0xff8c1a, { emissive: 0x7a3a00 }), standard(0xffc21a, { emissive: 0x7a5a00 })];
+  const flower = new THREE.IcosahedronGeometry(0.16, 0);
+  const span = ROAD_LANE_WIDTH * 1.9;
+  for (const x of [-span, span]) g.add(box(0.4, 5.4, 0.4, post, x, -TUBE_RADIUS + 2.7, 0));
+  for (let row = 0; row < 3; row++) { // drooping garlands
+    for (let i = 0; i <= 30; i++) {
+      const t = i / 30;
+      const x = -span + t * span * 2;
+      const y = -TUBE_RADIUS + 5 - row * 0.45 - Math.sin(t * Math.PI) * 0.9;
+      g.add(mesh(flower, marigold[(i + row) % 2], x, y, 0));
     }
-    return g;
-  };
+  }
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 1.2), basic(0xffffff, { map: signTexture(['DELIVERY POINT', 'पहुँच गए!']), side: THREE.DoubleSide }));
+  sign.position.y = -TUBE_RADIUS + 5.9;
+  g.add(sign);
+  return g;
 }
 
-// Factories for every object on the track. A key like 'wall@water' is the
-// underwater look of 'wall'; types without one look the same everywhere.
+// Factories for every object on the track. A key like 'wall@road' is that
+// type's look in that zone.
 export function buildTrackMakers() {
-  // ----- space -----
-  const crateSide = standard(0xc8571d, { map: hazardPanel(), roughness: 0.7 });
-  const crateTop = standard(0x9a4318, { roughness: 0.8 });
-  const frame = standard(0x2a2f45, { metalness: 0.6, roughness: 0.4 });
-  const crateGeo = new THREE.BoxGeometry(LANE_WIDTH * 0.78, 2.5, 1.3);
-  const crateMats = [crateSide, crateSide, crateTop, crateTop, crateSide, crateSide];
-  const cw = LANE_WIDTH * 0.4;
-  const postGeo = new THREE.BoxGeometry(0.16, 2.6, 0.16);
-  const rimGeo = new THREE.BoxGeometry(LANE_WIDTH * 0.82, 0.14, 0.16);
-
-  // ----- water -----
-  const rockMats = [standard(0xd9576b, { emissive: 0x4a1422 }), standard(0xa64fd0, { emissive: 0x2a1040 })];
-  const branchMat = standard(0xffb347, { emissive: 0x3a250b });
-  const rockGeo = new THREE.DodecahedronGeometry(1, 0);
-  const branchGeo = new THREE.ConeGeometry(0.13, 0.9, 5).translate(0, 0.45, 0);
-  const urchinCore = standard(0x3a1a5c, { emissive: 0x7a2fd0 });
-  const spikeGeo = new THREE.ConeGeometry(0.05, 0.42, 4).translate(0, 0.3, 0);
-  const stingCore = basic(0xe2b8ff);
-  const stingHalo = glowHalo(0xb04dff, 0.45);
-  pulsing.push({ material: stingHalo, base: 0.45, speed: 9 });
-  const bellGeo = new THREE.SphereGeometry(0.7, 10, 5, 0, Math.PI * 2, 0, Math.PI / 2);
-  const bellMat = standard(0xff6fd8, { emissive: 0xb02a90, transparent: true, opacity: 0.8 });
-  const innerMat = glowHalo(0xffb3ef, 0.6);
-  const frillGeo = new THREE.TorusGeometry(0.68, 0.06, 4, 10).rotateX(Math.PI / 2);
-  const tentacleGeo = new THREE.CylinderGeometry(0.025, 0.01, 0.7, 4).translate(0, -0.35, 0);
-  const tentacleMat = basic(0xff9be6, { transparent: true, opacity: 0.8 });
-
-  // ----- pickups -----
-  const coinGeo = new THREE.OctahedronGeometry(0.35);
-  const coinMat = standard(0x3dffb0, { emissive: 0x16a870, metalness: 0.4, roughness: 0.3 });
-  const bubbleGeo = new THREE.SphereGeometry(0.34, 10, 8);
-  const bubbleMat = new THREE.MeshStandardMaterial({
-    color: 0xbfefff, emissive: 0x2f8fd0, transparent: true, opacity: 0.65, roughness: 0.1,
-  });
-  const shineGeo = new THREE.SphereGeometry(0.08, 6, 4);
-  const ringGeo = new THREE.TorusGeometry(0.7, 0.05, 4, 16);
-
-  // ----- zone gates: a membrane filling the whole tunnel -----
-  const discGeo = new THREE.CircleGeometry(CORNER_RADIUS, LANES).rotateZ(Math.PI / LANES);
-  const rimGateGeo = new THREE.TorusGeometry(CORNER_RADIUS - 0.1, 0.25, 4, LANES).rotateZ(Math.PI / LANES);
-  const gate = (discColor, opacity, rimColor) => () => {
-    const g = new THREE.Group();
-    g.add(new THREE.Mesh(discGeo, basic(discColor, {
-      transparent: true, opacity, side: THREE.DoubleSide, depthWrite: false,
-    })));
-    g.add(new THREE.Mesh(rimGateGeo, basic(rimColor)));
-    return g;
-  };
-
-  // A power-up: a spinning icon inside a glowing ring, floating at chest height.
-  const pickup = (color, buildIcon) => () => {
-    const g = new THREE.Group();
-    const icon = buildIcon(standard(color, { emissive: color, emissiveIntensity: 0.5 }));
-    icon.position.y = 1.2;
-    g.add(icon, mesh(ringGeo, basic(color), 0, 1.2));
-    g.spinner = icon;
-    return g;
-  };
-
   return {
-    wall: () => {
-      const g = new THREE.Group();
-      g.add(mesh(crateGeo, crateMats, 0, 1.25));
-      for (const x of [-cw, cw]) {
-        for (const z of [-0.65, 0.65]) g.add(mesh(postGeo, frame, x, 1.3, z));
-      }
-      for (const y of [0.07, 2.5]) {
-        for (const z of [-0.65, 0.65]) g.add(mesh(rimGeo, frame, 0, y, z));
-      }
-      return g;
-    },
-    low: laser(0.5, 0xff2a4d, 0.75),
-    high: laser(1.65, 0xffb020, 1.8),
-
-    'wall@water': () => {
-      // A lump of coral rock with branches growing off it.
-      const g = new THREE.Group();
-      const mat = rockMats[Math.floor(Math.random() * rockMats.length)];
-      const big = mesh(rockGeo, mat, -0.35, 1.0, 0);
-      big.scale.set(1.15, 1.0, 0.65);
-      const small = mesh(rockGeo, mat, 0.7, 0.75, 0.1);
-      small.scale.set(0.8, 0.8, 0.55);
-      g.add(big, small);
-      for (const [x, y, tilt] of [[-0.8, 1.7, -0.4], [-0.2, 1.9, 0.1], [0.5, 1.4, 0.5], [0.9, 1.2, 0.8]]) {
-        const branch = mesh(branchGeo, branchMat, x, y, 0);
-        branch.rotation.z = -tilt;
-        g.add(branch);
-      }
-      return g;
-    },
-    'low@water': () => {
-      // Spiky sea urchins with a stinging line between them: jump over.
-      const g = new THREE.Group();
-      g.add(mesh(new THREE.CylinderGeometry(0.03, 0.03, LANE_WIDTH * 0.9, 5).rotateZ(Math.PI / 2), stingCore, 0, 0.45));
-      g.add(mesh(new THREE.CylinderGeometry(0.12, 0.12, LANE_WIDTH * 0.9, 6).rotateZ(Math.PI / 2), stingHalo, 0, 0.45));
-      const directions = new THREE.IcosahedronGeometry(1, 0).attributes.position;
-      for (const x of [-1.35, 0, 1.35]) {
-        const urchin = new THREE.Group();
-        urchin.position.set(x, 0.42, 0);
-        urchin.add(mesh(new THREE.IcosahedronGeometry(0.26, 0), urchinCore));
-        const up = new THREE.Vector3(0, 1, 0);
-        const dir = new THREE.Vector3();
-        for (let i = 0; i < directions.count; i += 3) {
-          dir.fromBufferAttribute(directions, i).normalize();
-          const spike = mesh(spikeGeo, urchinCore);
-          spike.quaternion.setFromUnitVectors(up, dir);
-          urchin.add(spike);
-        }
-        g.add(urchin);
-      }
-      return g;
-    },
-    'high@water': () => {
-      // Two jellyfish drifting at head height: slide under.
-      const g = new THREE.Group();
-      g.add(mesh(new THREE.CylinderGeometry(0.03, 0.03, LANE_WIDTH * 0.9, 5).rotateZ(Math.PI / 2),
-        basic(0xff6fd8, { transparent: true, opacity: 0.5 }), 0, 1.5));
-      const jellies = [];
-      for (const x of [-0.95, 0.95]) {
-        const jelly = new THREE.Group();
-        jelly.position.set(x, 1.95, 0);
-        jelly.add(mesh(bellGeo, bellMat), mesh(new THREE.SphereGeometry(0.3, 8, 6), innerMat, 0, 0.15, 0));
-        jelly.add(mesh(frillGeo, bellMat));
-        const tentacles = [];
-        for (let i = 0; i < 6; i++) {
-          const a = (i / 6) * Math.PI * 2;
-          const t = mesh(tentacleGeo, tentacleMat, Math.cos(a) * 0.4, 0, Math.sin(a) * 0.4);
-          jelly.add(t);
-          tentacles.push(t);
-        }
-        jelly.tentacles = tentacles;
-        jelly.phase = Math.random() * 10;
-        g.add(jelly);
-        jellies.push(jelly);
-      }
-      g.animate = (time) => {
-        for (const jelly of jellies) {
-          const t = time * 3 + jelly.phase;
-          jelly.position.y = 1.95 + Math.sin(t) * 0.08;
-          jelly.scale.set(1 + Math.sin(t) * 0.06, 1 - Math.sin(t) * 0.06, 1 + Math.sin(t) * 0.06);
-          jelly.tentacles.forEach((tentacle, i) => { tentacle.rotation.x = Math.sin(t * 1.3 + i) * 0.3; });
-        }
-      };
-      return g;
-    },
+    ...OBSTACLES,
 
     coin: () => {
       const g = new THREE.Group();
-      const coin = mesh(coinGeo, coinMat, 0, 1.0);
+      const coin = rupeeCoin();
+      coin.position.y = 1.0;
       g.add(coin);
       g.spinner = coin;
       return g;
     },
-    bubble: () => {
+    battery: () => {
       const g = new THREE.Group();
-      g.add(mesh(bubbleGeo, bubbleMat, 0, 1.0), mesh(shineGeo, basic(0xffffff), -0.12, 1.12));
+      const cell = battery();
+      cell.position.y = 1.0;
+      g.add(cell);
+      g.spinner = cell;
       return g;
     },
-    magnet: pickup(0xff4d6d, (mat) => {
-      const g = new THREE.Group();
-      g.add(box(0.16, 0.5, 0.16, mat, -0.24, 0.05, 0), box(0.16, 0.5, 0.16, mat, 0.24, 0.05, 0));
-      g.add(box(0.64, 0.16, 0.16, mat, 0, -0.25, 0));
-      const tip = basic(0xffffff);
-      g.add(box(0.17, 0.12, 0.17, tip, -0.24, 0.36, 0), box(0.17, 0.12, 0.17, tip, 0.24, 0.36, 0));
-      return g;
-    }),
-    shield: pickup(0x35e8ff, (mat) => new THREE.Mesh(new THREE.IcosahedronGeometry(0.4, 0), mat)),
-    boost: pickup(0xffd23d, (mat) => {
-      const g = new THREE.Group();
-      const cone = new THREE.ConeGeometry(0.28, 0.45, 4).rotateX(-Math.PI / 2);
-      g.add(mesh(cone, mat, 0, 0, 0.2), mesh(cone, mat, 0, 0, -0.2));
-      return g;
-    }),
+    magnet: pickup(0x8f5fe0, upiCard),
+    shield: pickup(0xd62828, helmet),
+    boost: pickup(0xffc21a, chai),
 
+    'gate@tunnel': () => portal(['शॉर्टकट', 'NALA SHORTCUT →'], { bg: '#0e6b68', fg: '#fff1d6', border: '#ffc21a', width: 512, height: 140 }),
+    'gate@road': () => portal(['BACK ON THE ROAD', 'सड़क →'], { bg: '#f59e1b', fg: '#121633', border: '#d6246e', width: 512, height: 140 }),
     finish: buildFinishArch,
-
-    'gate@water': gate(0x1f7fd6, 0.55, 0x9ff3ff), // hull breach: a wall of sea water
-    'gate@space': gate(0xdffaff, 0.35, 0xffffff), // geyser: foam blasting back up to space
   };
-}
-
-// ---------- delivery point ----------
-
-function signTexture(lines, { bg = '#f59e1b', fg = '#121633', border = '#d6246e', width = 512, height = 160 } = {}) {
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, width, height);
-  ctx.strokeStyle = border;
-  ctx.lineWidth = 12;
-  ctx.strokeRect(10, 10, width - 20, height - 20);
-  ctx.fillStyle = border;
-  for (let x = 30; x < width - 20; x += 26) { // painted dots along the edges
-    ctx.beginPath(); ctx.arc(x, 26, 4, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(x, height - 26, 4, 0, Math.PI * 2); ctx.fill();
-  }
-  ctx.fillStyle = fg;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.font = `bold ${Math.floor(height / (lines.length + 1.2))}px "Yatra One", "Baloo 2", sans-serif`;
-  lines.forEach((line, i) => ctx.fillText(line, width / 2, (height / (lines.length + 1)) * (i + 1)));
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  return texture;
-}
-
-// A ring of marigold garlands with a painted sign: the drop-off point.
-function buildFinishArch() {
-  const g = new THREE.Group();
-  const marigold = [standard(0xff8c1a, { emissive: 0x7a3a00 }), standard(0xffc21a, { emissive: 0x7a5a00 })];
-  const flower = new THREE.IcosahedronGeometry(0.16, 0);
-  for (let i = 0; i < 56; i++) {
-    const a = (i / 56) * Math.PI * 2;
-    g.add(mesh(flower, marigold[i % 2], Math.cos(a) * (CORNER_RADIUS - 0.35), Math.sin(a) * (CORNER_RADIUS - 0.35), 0));
-  }
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 1.06), basic(0xffffff, { map: signTexture(['DELIVERY POINT']), side: THREE.DoubleSide }));
-  sign.position.y = TUBE_RADIUS - 1.4;
-  g.add(sign);
-  return g;
 }

@@ -9,7 +9,7 @@ const COVER = 1.22; // background bigger than the view, so camera moves never sh
 const MOUTH_OPEN = 0.13; // voice level that opens the speaker's mouth
 const MOUTH_HOLD = 0.07; // seconds a mouth stays open/shut at least, so it flaps rather than flickers
 // Which character each cut-out shows (to know whose mouth moves).
-const WHO = { riya: 'riya', mishra: 'dispatch', nani: 'nani', drone: 'security' };
+const WHO = { riya: 'riya', mishra: 'dispatch', nani: 'nani', mamu: 'mamu' };
 const whoIs = (img) => Object.entries(WHO).find(([part]) => img.includes(part))?.[1];
 const ease = (t) => t * t * (3 - 2 * t);
 
@@ -81,6 +81,8 @@ export class Stage {
     this.group.clear();
     this.cast = [];
     this.mouth = null;
+    this.speakerPlane = null;
+    this.ready = false; // true once the pictures are up
     const mouths = await this.mouths;
     const aspect = window.innerWidth / window.innerHeight;
     this.camera.aspect = aspect;
@@ -108,7 +110,10 @@ export class Stage {
 
     const v = view(CAST_DEPTH);
     const portrait = aspect < 0.9;
-    for (const member of shot.cast ?? []) {
+    // A tall phone screen only has room for one: the speaker, if they're in the shot.
+    let cast = shot.cast ?? [];
+    if (portrait && cast.length > 1) cast = [cast.find((m) => whoIs(m.img) === speaker) ?? cast[0]];
+    for (const member of cast) {
       const texture = await this.texture(member.img);
       if (!texture || shot !== this.shot) continue;
       const imageAspect = texture.image.width / texture.image.height;
@@ -119,8 +124,11 @@ export class Stage {
       const plane = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ map: texture, transparent: true, alphaTest: 0.02 }));
       const side = portrait ? 0 : { left: -0.24, right: 0.24, centre: 0 }[member.side ?? 'centre'];
       plane.position.set(side * v.width, -v.height / 2 - 0.25, -CAST_DEPTH);
+      plane.side = portrait ? 'centre' : member.side ?? 'centre';
+      plane.headHeight = height * 0.86; // the face, a little under the top of the cut-out
       this.group.add(plane);
       this.cast.push(plane);
+      if (whoIs(member.img) === speaker) this.speakerPlane = plane;
 
       // The speaker's open mouth: a small patch laid over the closed one.
       const spot = mouths[member.img];
@@ -139,6 +147,7 @@ export class Stage {
 
     this.dust = this.makeDust(shot.dust ?? 'dust');
     this.group.add(this.dust);
+    this.ready = true;
   }
 
   makeDust(kind) {
@@ -154,6 +163,21 @@ export class Stage {
     points.kind = kind;
     points.frustumCulled = false;
     return points;
+  }
+
+  // Where the speaker's face is on screen, in CSS pixels, and which side of
+  // the picture they stand on (left | right | centre); null if they're not in it.
+  speakerAnchor() {
+    const plane = this.speakerPlane;
+    if (!plane) return null;
+    const point = new THREE.Vector3(0, plane.headHeight, 0);
+    plane.localToWorld(point);
+    point.project(this.camera);
+    return {
+      x: ((point.x + 1) / 2) * window.innerWidth,
+      y: ((1 - point.y) / 2) * window.innerHeight,
+      side: plane.side,
+    };
   }
 
   // progress: 0..1 through the shot (drives the camera move).

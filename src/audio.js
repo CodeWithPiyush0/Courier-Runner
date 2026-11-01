@@ -1,6 +1,11 @@
 import { settings } from './settings.js';
 
-const MUSIC = { menu: 'music/menu.mp3', space: 'music/space.mp3', water: 'music/water.mp3' };
+// Each track, then a stand-in to play until it has been generated (npm run music).
+const MUSIC = {
+  menu: ['music/menu.mp3'],
+  road: ['music/road.mp3'],
+  tunnel: ['music/tunnel.mp3'],
+};
 const MUSIC_LEVEL = 0.7; // music sits a little under the effects and voice
 const VOICE_DUCK = 0.45; // music level while Dispatch is talking
 const PAUSE_DUCK = 0.35;
@@ -78,7 +83,7 @@ export class Sound {
 
   // ---------- music ----------
 
-  // Crossfade to a track (menu | space | water). Before unlock it is remembered.
+  // Crossfade to a track (menu | road | tunnel). Before unlock it is remembered.
   playMusic(name) {
     this.wantedTrack = name;
     if (!this.ctx || this.currentTrack === name) return;
@@ -90,8 +95,16 @@ export class Sound {
     }
     let track = this.tracks[name];
     if (!track) {
-      const el = new Audio(MUSIC[name]);
+      const [file, standIn] = MUSIC[name];
+      const el = new Audio(file);
       el.loop = true;
+      if (standIn) {
+        el.addEventListener('error', () => {
+          if (el.src.endsWith(standIn)) return;
+          el.src = standIn;
+          if (this.currentTrack === name) el.play().catch(() => {});
+        });
+      }
       const gain = this.ctx.createGain();
       gain.gain.value = 0;
       this.ctx.createMediaElementSource(el).connect(gain).connect(this.musicBus);
@@ -220,18 +233,18 @@ export class Sound {
     source.stop(start + duration + 0.05);
   }
 
-  // Play a named effect. `water` muffles and lowers things underwater;
+  // Play a named effect. `muffled` dulls things in a tunnel;
   // `step` raises the pitch (coin streaks).
-  play(name, { water = false, step = 0 } = {}) {
+  play(name, { muffled = false, step = 0 } = {}) {
     if (!this.ctx || settings.get('muted')) return;
-    const muffle = water ? 1800 : 0;
+    const muffle = muffled ? 1800 : 0;
     const pitch = 2 ** (Math.min(step, 12) / 12);
     switch (name) {
       case 'lane':
         this.noise({ from: 900, to: 2600, duration: 0.1, volume: 0.12, q: 2 });
         break;
       case 'jump':
-        this.tone({ type: 'triangle', from: water ? 220 : 320, to: water ? 480 : 760, duration: 0.16, volume: 0.22, lowpass: muffle });
+        this.tone({ type: 'triangle', from: 320, to: 760, duration: 0.16, volume: 0.22, lowpass: muffle });
         this.noise({ from: 600, to: 2000, duration: 0.14, volume: 0.06 });
         break;
       case 'slide':
@@ -245,9 +258,9 @@ export class Sound {
         this.tone({ from: 1320 * pitch, duration: 0.07, volume: 0.16 });
         this.tone({ from: 1760 * pitch, duration: 0.12, volume: 0.14, delay: 0.05 });
         break;
-      case 'bubble':
-        this.tone({ from: 380, to: 1300, duration: 0.09, volume: 0.22 });
-        this.tone({ from: 520, to: 1600, duration: 0.07, volume: 0.15, delay: 0.06 });
+      case 'charge': // a battery for the torch
+        this.tone({ type: 'square', from: 440, to: 880, duration: 0.12, volume: 0.1, lowpass: 3000 });
+        this.tone({ type: 'square', from: 880, to: 1320, duration: 0.1, volume: 0.08, lowpass: 3000, delay: 0.08 });
         break;
       case 'power':
         [523, 659, 784, 1047].forEach((f, i) => this.tone({ type: 'triangle', from: f, duration: 0.14, volume: 0.18, delay: i * 0.06 }));
@@ -271,21 +284,23 @@ export class Sound {
         this.noise({ filter: 'lowpass', from: muffle || 3000, to: 80, duration: 0.7, volume: 0.5 });
         this.tone({ from: 130, to: 35, duration: 0.6, volume: 0.45 });
         break;
-      case 'chomp':
-        this.tone({ type: 'square', from: 140, to: 60, duration: 0.25, volume: 0.25, lowpass: 900 });
-        this.tone({ type: 'square', from: 120, to: 50, duration: 0.25, volume: 0.25, lowpass: 900, delay: 0.22 });
+      case 'whistle': // Mamu's police whistle: a trilled two-tone blast
+        for (let i = 0; i < 6; i++) {
+          this.tone({ type: 'sine', from: i % 2 ? 2650 : 2400, duration: 0.07, volume: 0.13, delay: i * 0.06 });
+        }
+        this.tone({ type: 'sine', from: 2500, to: 2300, duration: 0.35, volume: 0.12, delay: 0.36 });
         break;
-      case 'drown':
-        for (let i = 0; i < 6; i++) this.tone({ from: 700 - i * 80, to: 1100 - i * 80, duration: 0.08, volume: 0.15, delay: i * 0.12 });
+      case 'powerdown': // the torch dies
+        this.tone({ type: 'sawtooth', from: 600, to: 60, duration: 0.8, volume: 0.15, lowpass: 2000 });
         break;
-      case 'splash':
-        this.noise({ from: 300, to: 3500, duration: 0.9, volume: 0.35, q: 0.7 });
-        for (let i = 0; i < 4; i++) this.tone({ from: 400 + i * 150, to: 1400, duration: 0.08, volume: 0.1, delay: 0.25 + i * 0.09 });
+      case 'tunnelIn': // down into the echoing nala
+        this.noise({ filter: 'lowpass', from: 3000, to: 300, duration: 0.9, volume: 0.3 });
+        this.tone({ from: 160, to: 70, duration: 0.7, volume: 0.25 });
         break;
-      case 'geyser':
-        this.noise({ filter: 'highpass', from: 200, to: 6000, duration: 1.1, volume: 0.3 });
+      case 'tunnelOut': // back out into the open
+        this.noise({ filter: 'highpass', from: 300, to: 5000, duration: 0.8, volume: 0.25 });
         break;
-      case 'oxygen':
+      case 'lowBattery':
         this.tone({ type: 'square', from: 880, duration: 0.07, volume: 0.07 });
         this.tone({ type: 'square', from: 880, duration: 0.07, volume: 0.07, delay: 0.12 });
         break;

@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-    <title>Courier Runner</title>
-    <meta name="description" content="Riya from Patna rides a truck-art hoverboard through a space station and an alien ocean to deliver one very strange parcel." />
+    <title>Patna Rush</title>
+    <meta name="description" content="Riya rides her scooter from Patna to her Nani's house in Muzaffarpur, through Bihar traffic and the city's nala shortcuts, with a traffic police Mamu on her tail." />
     <meta name="theme-color" content="#121633" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -29,11 +29,11 @@
         <img id="route-marker" src="/art/emblem.webp" alt="" />
       </div>
       <div id="powers"></div>
-      <div id="oxygen" class="hidden">
-        <img src="/art/icon-oxygen.webp" alt="" />
-        <div class="bar"><div id="oxygen-fill"></div><span>AIR</span></div>
+      <div id="battery" class="hidden">
+        <img src="/art/icon-battery.webp" alt="" />
+        <div class="bar"><div id="battery-fill"></div><span>TORCH</span></div>
       </div>
-      <div id="security" class="hidden">SECURITY CLOSE</div>
+      <div id="security" class="hidden">MAMU CLOSE!</div>
       <div id="flip"><div id="flip-fill"></div><span>FLIP</span></div>
       <button id="pause" class="round" type="button" aria-label="Pause"></button>
     </div>
@@ -51,8 +51,11 @@
     <div id="cinematic" class="hidden">
       <div id="cut"></div>
       <div id="titlecard" class="hidden"></div>
-      <div class="bar top"><span id="caption" class="hidden"></span><button id="skip" type="button">Skip ▸▸</button></div>
-      <div class="bar bottom"><div id="subtitle" class="hidden"></div></div>
+      <div class="bar top"></div>
+      <div class="bar bottom"></div>
+      <span id="caption" class="hidden"></span>
+      <button id="skip" type="button">Skip ▸▸</button>
+      <div id="bubble" class="hidden"></div>
     </div>
 
     <div id="stamp" class="hidden">DELIVERED</div>

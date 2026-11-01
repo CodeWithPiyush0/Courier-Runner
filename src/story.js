@@ -2,135 +2,145 @@
 // Lines here are voiced by tools/gen_voice.py (each speaker has their own voice),
 // so after editing a line, run `npm run voice` to record the new version.
 // `shot` names the cutscene picture for the line (see scenes.js).
+//
+// Riya grew up in Muzaffarpur and rides a scooter for a delivery app in Patna.
+// Today's parcel is Nani's old radio, fixed in Patna in time for her birthday,
+// and it has to reach Nani's house in the litchi orchards of Muzaffarpur by
+// evening. A traffic cop ("Mamu", as everyone in Bihar calls the police) chases
+// her the whole 75 km for breaking rules. At Nani's door he takes off his
+// helmet: he really is her Mamu, Nani's son, coming home for the birthday too.
 
 export const CHARACTERS = {
   riya: { name: 'Riya', portrait: '/art/portrait-riya.webp' },
   dispatch: { name: 'Mishra ji · Dispatch', portrait: '/art/dispatch.webp' },
   nani: { name: 'Nani', portrait: '/art/portrait-nani.webp' },
-  security: { name: 'Chandra-7 Security', portrait: '/art/portrait-security.webp' },
+  mamu: { name: 'Traffic Mamu', portrait: '/art/portrait-mamu.webp' },
 };
 
 // Each delivery is a level. `zones` is the route: a list of [zone, metres], and
-// the delivery is complete at the end of it. `difficulty` ramps from the first
-// to the second value over the route. Features switch the harder systems on.
+// the delivery is complete at the end of it. Roads have 3 lanes; tunnels are the
+// nala / underpass shortcuts where she can ride the walls. `difficulty` ramps
+// from the first to the second value over the route.
 export const LEVELS = [
   {
     id: 1,
     title: 'First Shift',
-    place: 'Chandra-7 cargo ring',
-    zones: [['space', 600]],
+    place: 'Patna old city',
+    zones: [['road', 450], ['tunnel', 250], ['road', 150]],
     difficulty: [0, 0.15],
     chaser: false,
     powers: false,
     tutorial: 'basics',
     intro: [
-      { who: 'dispatch', shot: 'dispatch', text: "Riya! Riya! Are you awake? A big order just came in." },
-      { who: 'riya', shot: 'dock', text: "Ka ho, Mishra ji! I'm always awake. Night shift, na? What's the parcel?" },
-      { who: 'dispatch', shot: 'dispatch-close', text: "Pickup from Chandra-7. Drop at... 'Nani, Coral Colony, Ocean Planet Neela'." },
-      { who: 'dispatch', shot: 'parcel', text: "Strange box. It's humming." },
-      { who: 'riya', shot: 'dock-shock', text: "Humming? Parcels don't hum, Mishra ji." },
-      { who: 'dispatch', shot: 'dispatch', text: "This one does. Five-star tip if it arrives today. Chalo, I'll guide you through the cargo ring." },
+      { who: 'dispatch', shot: 'dispatch', text: "Riya! Riya! Are you awake? An urgent parcel just came in." },
+      { who: 'riya', shot: 'shop', text: "Ka ho, Mishra ji! Always awake. What's the parcel?" },
+      { who: 'dispatch', shot: 'dispatch-close', text: "Pickup from Laxmi Radio Repair, Patna. Drop at... 'Nani, Litchi Bagan, Muzaffarpur'." },
+      { who: 'riya', shot: 'parcel', text: "Arre, that's my Nani! Wait... why is this box humming?" },
+      { who: 'dispatch', shot: 'dispatch', text: "It's her old radio, fixed and switched on. Today is her birthday. Deliver it by evening. Chalo!" },
     ],
     outro: [
-      { who: 'riya', shot: 'tunnel-grin', text: "Cargo ring cleared! Easy-peasy." },
-      { who: 'dispatch', shot: 'dispatch-close', text: "Don't celebrate yet. Station security is asking questions about your parcel." },
+      { who: 'riya', shot: 'street-grin', text: "Old city done! Patna traffic is no match for me." },
+      { who: 'dispatch', shot: 'dispatch-close', text: "Don't celebrate yet. A traffic police Mamu saw you jump that signal." },
     ],
   },
   {
     id: 2,
-    title: 'Security Alert',
-    place: 'Chandra-7 inner tunnels',
-    zones: [['space', 900]],
+    title: 'Mamu Alert',
+    place: 'Dak Bungalow chauraha',
+    zones: [['road', 400], ['tunnel', 300], ['road', 250]],
     difficulty: [0.15, 0.35],
     chaser: true,
     powers: true,
     tutorial: 'chase',
     intro: [
-      { who: 'security', shot: 'security', text: "Attention, courier. Your parcel is emitting unknown signals. Stop for inspection." },
-      { who: 'riya', shot: 'tunnel-shock', text: "Sorry, sir! Delivery deadline hai! Inspect it at the next station!" },
-      { who: 'dispatch', shot: 'dispatch-close', text: "Riya, if that drone zaps you twice, it catches you. Keep moving!" },
+      { who: 'mamu', shot: 'mamu', text: "Ae, scooter wali! Signal tod ke kahan ja rahi ho? Ruko!" },
+      { who: 'riya', shot: 'street-shock', text: "Sorry, Mamu! Birthday delivery hai! Challan baad mein!" },
+      { who: 'riya', shot: 'street-shock', text: "Wait... why does that voice sound so familiar?" },
+      { who: 'dispatch', shot: 'dispatch-close', text: "Riya, if that Mamu catches you, no birthday, only challan. Bhago!" },
     ],
     outro: [
-      { who: 'dispatch', shot: 'dispatch', text: "You lost them! But the sensors say there's a hull breach ahead." },
-      { who: 'riya', shot: 'tunnel-shock', text: "A breach? As in... water?" },
+      { who: 'dispatch', shot: 'dispatch', text: "You lost him! But Gandhi Setu is jammed for ten kilometres." },
+      { who: 'riya', shot: 'street-grin', text: "Ten kilometres? Then I'm taking the tunnel under the bridge!" },
     ],
   },
   {
     id: 3,
-    title: 'Hull Breach',
-    place: 'Neela sea dome',
-    zones: [['space', 350], ['water', 650]],
+    title: 'Setu Jam',
+    place: 'Mahatma Gandhi Setu, over the Ganga',
+    zones: [['road', 300], ['tunnel', 500], ['road', 250]],
     difficulty: [0.3, 0.45],
     chaser: true,
     powers: true,
-    tutorial: 'water',
+    tutorial: 'tunnel',
     intro: [
-      { who: 'dispatch', shot: 'breach', text: "The cargo ring runs right into the Neela sea dome. Something big cracked it open." },
-      { who: 'riya', shot: 'tunnel-shock', text: "Arre baap re. My board is waterproof, right?" },
-      { who: 'dispatch', shot: 'dispatch', text: "Mostly. Grab air bubbles, or you'll be swimming home." },
+      { who: 'dispatch', shot: 'setu', text: "Gandhi Setu. Five kilometres over the Ganga, and fifty thousand trucks." },
+      { who: 'riya', shot: 'street-grin', text: "There's a service tunnel under the bridge. Dark, but empty." },
+      { who: 'dispatch', shot: 'dispatch', text: "Keep your phone torch on. And don't drop Nani's radio in the Ganga!" },
     ],
     outro: [
-      { who: 'riya', shot: 'deep', text: "Mishra ji, something huge with a glowing light is following me!" },
-      { who: 'dispatch', shot: 'dispatch-close', text: "That's a giant anglerfish. And it seems to want your parcel." },
+      { who: 'riya', shot: 'haat', text: "Hajipur! I can smell the bananas already." },
+      { who: 'mamu', shot: 'mamu', text: "I can still see you, scooter wali! Hajipur mein bhi pakad lenge!" },
     ],
   },
   {
     id: 4,
-    title: 'The Deep',
-    place: 'Neela trench',
-    zones: [['water', 700], ['space', 400], ['water', 500]],
+    title: 'Hajipur Haat',
+    place: 'Hajipur banana market',
+    zones: [['road', 500], ['tunnel', 400], ['road', 400]],
     difficulty: [0.45, 0.65],
     chaser: true,
     powers: true,
     intro: [
-      { who: 'riya', shot: 'deep-close', text: "Why would a fish want a parcel?" },
-      { who: 'dispatch', shot: 'dispatch', text: "Maybe it ordered something too. Just don't let it bite you!" },
-      { who: 'riya', shot: 'parcel', text: "The box is getting warmer. And it's glowing brighter." },
+      { who: 'riya', shot: 'haat', text: "Hajipur banana market. Every cart in Bihar is here today." },
+      { who: 'dispatch', shot: 'dispatch', text: "Customer called. Nani says the radio must reach before the evening songs." },
+      { who: 'riya', shot: 'parcel', text: "Mishra ji, the parcel is singing now! It's playing old film songs!" },
     ],
     outro: [
-      { who: 'dispatch', shot: 'dispatch-close', text: "Coral Colony is just ahead. Nani has called every five minutes." },
+      { who: 'dispatch', shot: 'dispatch-close', text: "Muzaffarpur is close. Nani has called nine times. Nine!" },
     ],
   },
   {
     id: 5,
-    title: "Nani's Doorstep",
-    place: 'Coral Colony, Neela',
-    zones: [['space', 500], ['water', 700], ['space', 400], ['water', 600]],
+    title: 'Litchi Bagan',
+    place: 'Muzaffarpur',
+    zones: [['road', 500], ['tunnel', 400], ['road', 600]],
     difficulty: [0.6, 0.9],
     chaser: true,
     powers: true,
     finale: true,
     intro: [
-      { who: 'nani', shot: 'nani', text: "Riya beta! Is my parcel coming? I have made litti-chokha for you." },
-      { who: 'riya', shot: 'tunnel-grin', text: "Coming, Nani! Just a small fish problem. A very big fish problem." },
+      { who: 'nani', shot: 'nani', text: "Riya beta! The whole family is coming for my birthday. Where is my radio?" },
+      { who: 'riya', shot: 'orchard-grin', text: "Almost there, Nani! Just one small problem. A traffic police Mamu." },
     ],
     outro: [],
   },
 ];
 
-// The finale at Nani's door.
+// The finale at Nani's house in Muzaffarpur.
 export const ENDING = [
-  { who: 'nani', shot: 'doorstep', text: "Oh! My little night-light has arrived!" },
-  { who: 'riya', shot: 'egg', text: "Nani... that's an egg. An anglerfish egg!" },
-  { who: 'nani', shot: 'hatch', text: "I ordered a pet that glows. The shop said 'some assembly required'." },
-  { who: 'riya', shot: 'mother', text: "So the big fish wasn't chasing me. She was following her baby!" },
-  { who: 'nani', shot: 'dinner', text: "Then she must stay for dinner too. Litti-chokha for everyone!" },
-  { who: 'dispatch', shot: 'dispatch-close', text: "Delivery confirmed. Five stars! And Riya, the customer wants to adopt the mother too." },
-  { who: 'riya', shot: 'kitchen-wave', text: "Mishra ji, next time, please read the parcel label first!" },
+  { who: 'nani', shot: 'doorstep', text: "My radio! And my Riya! Both arrived together!" },
+  { who: 'mamu', shot: 'reveal', text: "Got you finally, scooter wali! Signal jumping, five hundred rupees." },
+  { who: 'riya', shot: 'yard-shock', text: "Mamu?! You chased me all the way from Patna?" },
+  { who: 'mamu', shot: 'mamu-laugh', text: "Of course! I was coming home for Amma's birthday too. You just wouldn't stop!" },
+  { who: 'nani', shot: 'radio-party', text: "Arre, both of you, sit! The radio is playing our old song." },
+  { who: 'mamu', shot: 'litchi', text: "Here. Challan cancelled. Have some Shahi litchi instead." },
+  { who: 'dispatch', shot: 'dispatch-close', text: "Delivery confirmed. Five stars! And Riya, tell your Mamu we need escorts like him." },
+  { who: 'riya', shot: 'yard-wave', text: "Happy birthday, Nani! And Mamu, next time I follow the rules. Promise!" },
 ];
 
-// Shown over the opening exterior shot.
-export const PROLOGUE_CAPTION = 'Chandra-7 Orbital Station · above Ocean Planet Neela · 2:47 AM';
+// Shown over the opening shots.
+export const PROLOGUE_CAPTION = 'Patna · Ashok Rajpath · 4:30 PM';
 
 // In-game tutorial prompts. `gesture` is the touch animation shown.
 export const TUTORIAL_TEXT = {
-  lane: { touch: 'Swipe LEFT or RIGHT to dodge', key: 'Press ← or → to dodge', gesture: 'swipe-x' },
-  jump: { touch: 'Swipe UP to jump the low laser', key: 'Press ↑ to jump the low laser', gesture: 'swipe-up' },
-  slide: { touch: 'Swipe DOWN to slide under', key: 'Press ↓ to slide under', gesture: 'swipe-down' },
-  flip: { touch: 'Blocked! DOUBLE-TAP to flip to the far wall', key: 'Blocked! Press SPACE to flip to the far wall', gesture: 'double-tap' },
-  coins: { touch: 'Grab the green gems: they are your tips!', key: 'Grab the green gems: they are your tips!' },
-  goal: { touch: 'Reach the cargo dock to deliver!', key: 'Reach the cargo dock to deliver!' },
-  chase: { touch: 'Lasers zap you. Two quick zaps and security catches you!', key: 'Lasers zap you. Two quick zaps and security catches you!' },
-  powers: { touch: 'Power-up ahead: magnet, shield or boost!', key: 'Power-up ahead: magnet, shield or boost!' },
-  water: { touch: 'Underwater! Grab bubbles before your air runs out', key: 'Underwater! Grab bubbles before your air runs out', gesture: 'bubble' },
+  lane: { touch: 'Swipe LEFT or RIGHT to change lane', key: 'Press ← or → to change lane', gesture: 'swipe-x' },
+  jump: { touch: 'Swipe UP to hop the pothole', key: 'Press ↑ to hop the pothole', gesture: 'swipe-up' },
+  slide: { touch: 'Swipe DOWN to duck under', key: 'Press ↓ to duck under', gesture: 'swipe-down' },
+  flip: { touch: 'Blocked! DOUBLE-TAP to flip to the ceiling', key: 'Blocked! Press SPACE to flip to the ceiling', gesture: 'double-tap' },
+  coins: { touch: 'Grab the ₹ coins: they are your tips!', key: 'Grab the ₹ coins: they are your tips!' },
+  tunnel: { touch: 'Shortcut! In tunnels you can ride the walls', key: 'Shortcut! In tunnels you can ride the walls' },
+  goal: { touch: 'Reach the delivery point to finish!', key: 'Reach the delivery point to finish!' },
+  chase: { touch: 'Hit something and Mamu closes in. Twice quickly and he catches you!', key: 'Hit something and Mamu closes in. Twice quickly and he catches you!' },
+  powers: { touch: 'Power-up ahead: UPI magnet, helmet or cutting chai!', key: 'Power-up ahead: UPI magnet, helmet or cutting chai!' },
+  battery: { touch: 'Dark in here! Grab batteries to keep your torch on', key: 'Dark in here! Grab batteries to keep your torch on', gesture: 'battery' },
 };

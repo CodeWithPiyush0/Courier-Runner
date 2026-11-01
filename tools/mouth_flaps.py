@@ -1,16 +1,25 @@
-"""Make "mouth open" patches for lip-flapping, locally (no AI calls).
+"""Make the "mouth open" frames for lip-flapping in cutscenes.
 
-The lower lip and chin under each cut-out's mouth are pulled down a little,
-the gap between the lips is painted as the inside of a mouth (teeth, a hint of
-tongue), and only a soft-edged patch round the mouth is kept. Mouth positions
-are given below as fractions of each image (measured by eye from the art);
-re-measure them if a cut-out is redrawn.
+For each cut-out, Gemini redraws the same picture with the mouth open mid-word
+(in the character's own style: their teeth, lips, moustache). That frame is
+aligned to the original, and only a soft-edged patch round the mouth and jaw is
+kept. The game shows the patch while the voice is loud, so the face itself
+never changes. Mouth positions below are fractions of each image (measured by
+eye); re-measure if a cut-out is redrawn.
+
+Gemini's frames are cached in tools/out/mouth-frames/ against the cut-out they
+were made from, so re-running only calls the API for new or changed cut-outs.
 
 Writes public/art/story/<name>-mouth.webp and mouths.json, and a before/after
 preview to tools/out/mouths-preview.png.
 
     python tools/mouth_flaps.py
+    python tools/mouth_flaps.py cut-nani      # just this one (frame redrawn)
 """
+import argparse
+import base64
+import hashlib
+import io
 import json
 import sys
 from pathlib import Path
@@ -18,22 +27,75 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import gemini  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
 STORY = ROOT / "public" / "art" / "story"
+FRAMES = ROOT / "tools" / "out" / "mouth-frames"
+MODEL = "gemini-3.1-flash-image"
+GREEN = (0, 255, 0)
 
 # name: (mouth centre x, centre y, mouth width), as fractions of the image.
 MOUTHS = {
-    "cut-riya-talk": (0.665, 0.348, 0.11),
-    "cut-riya-grin": (0.59, 0.31, 0.12),
-    "cut-riya-shock": (0.57, 0.21, 0.07),
-    "cut-riya-wave": (0.585, 0.38, 0.11),
-    "cut-mishra": (0.515, 0.335, 0.12),
-    "cut-nani": (0.53, 0.405, 0.17),
+    "cut-riya-talk": (0.595, 0.357, 0.11),
+    "cut-riya-grin": (0.572, 0.385, 0.12),
+    "cut-riya-shock": (0.523, 0.381, 0.066),
+    "cut-riya-wave": (0.58, 0.354, 0.11),
+    "cut-mishra": (0.496, 0.347, 0.088),
+    "cut-nani": (0.529, 0.353, 0.12),
+    "cut-mamu": (0.49, 0.305, 0.095),
+    "cut-mamu-laugh": (0.512, 0.27, 0.11),
 }
-OPEN = 0.3  # how far the jaw drops, as a fraction of the mouth width
-INSIDE = (52, 14, 20)
-TEETH = (240, 232, 220)
-TONGUE = (150, 52, 66)
+PROMPT = (
+    "Edit this picture. Change ONLY the mouth: open it naturally, as if caught in the middle of saying 'aah' while "
+    "talking: the jaw drops a little and the teeth and tongue show, drawn in exactly the same style as the rest of "
+    "the face. Everything else must stay exactly the same: the same face, eyes, eyebrows, expression, hair, "
+    "clothes, pose, framing, size, colours, lighting and the flat green background."
+)
+
+
+def flat(image):
+    """The cut-out on the flat green it was drawn on (what Gemini sees and returns)."""
+    canvas = Image.new("RGBA", image.size, GREEN + (255,))
+    canvas.alpha_composite(image)
+    return canvas.convert("RGB")
+
+
+def open_frame(name, image):
+    """Gemini's open-mouth version of the cut-out (cached), resized to match it."""
+    FRAMES.mkdir(parents=True, exist_ok=True)
+    source = flat(image)
+    buffer = io.BytesIO()
+    source.save(buffer, "PNG")
+    digest = hashlib.sha1(buffer.getvalue()).hexdigest()[:12]
+    cached = FRAMES / f"{name}-{digest}.png"
+    if not cached.exists():
+        print(f"{name}: asking Gemini for the open mouth")
+        w, h = image.size
+        aspect = min(["3:4", "1:1", "4:3", "2:3", "4:5"], key=lambda a: abs(int(a.split(":")[0]) / int(a.split(":")[1]) - w / h))
+        response = gemini.request(f"models/{MODEL}:generateContent", {
+            "contents": [{"parts": [
+                {"inlineData": {"mimeType": "image/png", "data": base64.b64encode(buffer.getvalue()).decode()}},
+                {"text": PROMPT},
+            ]}],
+            "generationConfig": {"responseModalities": ["IMAGE"], "imageConfig": {"aspectRatio": aspect, "imageSize": "1K"}},
+        })
+        _, data = gemini.inline_data(response)
+        Image.open(io.BytesIO(data)).convert("RGB").save(cached)
+    return Image.open(cached).convert("RGB").resize(image.size, Image.LANCZOS)
+
+
+def align(original, edited, box):
+    """Shift `edited` so its face lines up with `original` (phase correlation on the face area)."""
+    a = np.asarray(original.convert("L").crop(box), dtype=np.float32)
+    b = np.asarray(edited.convert("L").crop(box), dtype=np.float32)
+    window = np.outer(np.hanning(a.shape[0]), np.hanning(a.shape[1]))
+    fa, fb = np.fft.fft2((a - a.mean()) * window), np.fft.fft2((b - b.mean()) * window)
+    cross = fa * np.conj(fb)
+    peak = np.unravel_index(np.argmax(np.abs(np.fft.ifft2(cross / (np.abs(cross) + 1e-6)))), a.shape)
+    dy, dx = [p - s if p > s // 2 else p for p, s in zip(peak, a.shape)]
+    return edited.transform(edited.size, Image.AFFINE, (1, 0, -dx, 0, 1, -dy), resample=Image.BICUBIC), (dx, dy)
 
 
 def soft_ellipse(size, box, blur):
@@ -46,58 +108,49 @@ def make_patch(name, cx, cy, mw):
     image = Image.open(STORY / f"{name}.webp").convert("RGBA")
     w, h = image.size
     cx, cy, mw = cx * w, cy * h, mw * w
-    # Region: a bit wider than the mouth, from the nose down to the chin.
-    box = (int(cx - mw), int(cy - mw * 0.6), int(cx + mw), int(cy + mw * 1.2))
-    region = np.asarray(image.crop(box), dtype=np.float32)
-    rh, rw = region.shape[:2]
-    lx, ly = cx - box[0], cy - box[1]  # mouth centre inside the region
-    drop = OPEN * mw
+    face = (int(cx - mw * 2.2), int(cy - mw * 2.4), int(cx + mw * 2.2), int(cy + mw * 1.6))
+    edited, shift = align(flat(image), open_frame(name, image), face)
 
-    # Pull everything below the lip line down, most at the lips, fading towards
-    # the chin and towards the mouth corners.
-    ys, xs = np.mgrid[0:rh, 0:rw].astype(np.float32)
-    across = np.clip(1 - np.abs(xs - lx) / (mw * 0.75), 0, 1) ** 0.6
-    down = np.clip(1 - (ys - ly) / (rh - ly), 0, 1) * (ys > ly)
-    source_y = np.clip(ys - drop * down * across, 0, rh - 1)
-    y0 = np.floor(source_y).astype(int)
-    y1 = np.minimum(y0 + 1, rh - 1)
-    t = (source_y - y0)[..., None]
-    xi = xs.astype(int)
-    warped = region[y0, xi] * (1 - t) + region[y1, xi] * t
-
-    # Paint the open mouth into the gap: dark inside, teeth along the top, tongue below.
-    size = (rw, rh)
-    gap = (lx - mw * 0.36, ly - drop * 0.08, lx + mw * 0.36, ly + drop * 0.95)
-    inside = soft_ellipse(size, gap, max(1.5, mw * 0.03))[..., None]
-    teeth = soft_ellipse(size, (gap[0] + mw * 0.06, gap[1], gap[2] - mw * 0.06, gap[1] + drop * 0.32), 1.2)[..., None]
-    tongue = soft_ellipse(size, (lx - mw * 0.2, ly + drop * 0.5, lx + mw * 0.2, gap[3] + drop * 0.2), 2)[..., None]
-    rgb = warped[..., :3]
-    rgb = rgb * (1 - inside) + np.array(INSIDE) * inside
-    rgb = rgb * (1 - teeth * inside * 0.85) + np.array(TEETH) * teeth * inside * 0.85
-    rgb = rgb * (1 - tongue * inside * 0.7) + np.array(TONGUE) * tongue * inside * 0.7
-
-    # Keep only a soft patch round the mouth and jaw.
-    keep = soft_ellipse(size, (lx - mw * 0.85, ly - mw * 0.25, lx + mw * 0.85, rh - mw * 0.05), mw * 0.12)
-    alpha = keep * (region[..., 3] / 255)
-    patch = np.dstack([rgb, alpha * 255]).clip(0, 255).astype(np.uint8)
+    # Keep a soft patch from under the nose to below the chin.
+    box = (int(cx - mw * 1.0), int(cy - mw * 0.45), int(cx + mw * 1.0), int(cy + mw * 1.15))
+    rw, rh = box[2] - box[0], box[3] - box[1]
+    lx, ly = cx - box[0], cy - box[1]
+    keep = soft_ellipse((rw, rh), (lx - mw * 0.8, ly - mw * 0.32, lx + mw * 0.8, ly + mw * 1.0), mw * 0.1)
+    rgb = np.asarray(edited.crop(box), dtype=np.float32)
+    original = np.asarray(image.crop(box), dtype=np.float32)
+    original_alpha = original[..., 3] / 255
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    screen = ((g > r + 50) & (g > b + 50))[..., None]  # green screen showing where the face moved
+    rgb = np.where(screen, original[..., :3], rgb)
+    patch = np.dstack([rgb, keep * original_alpha * 255]).clip(0, 255).astype(np.uint8)
     Image.fromarray(patch, "RGBA").save(STORY / f"{name}-mouth.webp", quality=92)
-    rect = {"x": box[0] / w, "y": box[1] / h, "w": rw / w, "h": rh / h}
+
     talking = image.copy()
     talking.alpha_composite(Image.fromarray(patch, "RGBA"), box[:2])
     pad = int(mw * 0.4)
     view = (box[0] - pad, box[1] - pad, box[2] + pad, box[3] + pad)
+    rect = {"x": box[0] / w, "y": box[1] / h, "w": rw / w, "h": rh / h}
+    print(f"{name}: done (aligned by {shift})")
     return rect, image.crop(view), talking.crop(view)
 
 
 def main():
-    table = {}
+    parser = argparse.ArgumentParser()
+    parser.add_argument("names", nargs="*")
+    args = parser.parse_args()
+    for name in args.names:  # named ones get a fresh frame
+        for old in FRAMES.glob(f"{name}-*.png"):
+            old.unlink()
+    table_file = STORY / "mouths.json"
+    table = json.loads(table_file.read_text()) if table_file.exists() else {}
     previews = []
     for name, spot in MOUTHS.items():
+        if not (STORY / f"{name}.webp").exists():
+            continue
         rect, closed, opened = make_patch(name, *spot)
         table[name] = rect
         previews.append((closed, opened))
-        print(f"{name}: done")
-    (STORY / "mouths.json").write_text(json.dumps(table, indent=1))
+    table_file.write_text(json.dumps(table, indent=1))
     size = 240
     sheet = Image.new("RGB", (size * 2 + 30, (size + 10) * len(previews)), (18, 22, 51))
     for i, pair in enumerate(previews):

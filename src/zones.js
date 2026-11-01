@@ -1,12 +1,12 @@
 import { FIRST_ZONE_LENGTH, ZONE_LENGTH } from './config.js';
 
-export const ZONE_ORDER = ['space', 'water'];
+export const ZONE_ORDER = ['road', 'tunnel'];
 
 // Where along the run each zone starts. Boundaries are z positions (the run
 // heads towards -z).
 // - Story deliveries follow a fixed route: [[zone, metres], ...], ending at
 //   `finishZ`.
-// - Endless runs alternate space → water → space … with random lengths,
+// - Endless runs alternate road → tunnel → road … with random lengths,
 //   generated lazily as far ahead as anyone asks.
 export class ZonePlan {
   constructor() { this.reset(0); }

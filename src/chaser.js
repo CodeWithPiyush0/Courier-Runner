@@ -1,13 +1,13 @@
 import * as THREE from 'three';
 import {
-  CHASER_START, CHASER_DANGER, CHASER_HOLD, CHASER_DECAY, placeOnWall,
+  CHASER_START, CHASER_DANGER, CHASER_HOLD, CHASER_DECAY, CAMERA_PITCH, placeBlended,
 } from './config.js';
 
-const FAR_BEHIND = 11; // just behind the camera, out of view
-const CLOSE_BEHIND = 2.6;
-const VISIBLE_WITHIN = 8.5;
-const SIDE_OFFSET = 0.3; // lanes; keeps it at Riya's heel instead of blocking the view
-const CAMERA_PITCH = -0.3; // sprites tilt to face the gameplay camera
+const FAR_BEHIND = 11.5; // just behind the camera, out of view
+const CLOSE_BEHIND = 3.4;
+const VISIBLE_WITHIN = 9;
+const SIDE_OFFSET = 0.3; // lanes; keeps him at Riya's heel instead of blocking the view
+const BEACON = [0xff2a3a, 0x2a6bff]; // police light: red, then blue
 
 const loader = new THREE.TextureLoader();
 const glow = (color, size) => new THREE.Mesh(
@@ -16,16 +16,17 @@ const glow = (color, size) => new THREE.Mesh(
 );
 
 // A painted sprite of the chaser seen from behind (public/art/sprites/), plus a
-// glowing light that animates: the drone's siren, the fish's lure.
+// flashing police light.
 function chaserSprite(file, height, light) {
   const group = new THREE.Group();
   const material = new THREE.MeshBasicMaterial({ transparent: true, alphaTest: 0.05, side: THREE.DoubleSide });
   const sprite = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).translate(0, 0.5, 0), material); // origin at the bottom
   sprite.rotation.x = CAMERA_PITCH;
-  material.map = loader.load(`/art/sprites/${file}.webp`, (texture) => {
+  const fit = (texture) => {
     texture.colorSpace = THREE.SRGBColorSpace;
     sprite.scale.set((height * texture.image.width) / texture.image.height, height, 1);
-  });
+  };
+  material.map = loader.load(`/art/sprites/${file}.webp`, fit);
   sprite.scale.set(height, height, 1);
   group.add(sprite);
   const lamp = glow(light.color, light.size);
@@ -36,20 +37,18 @@ function chaserSprite(file, height, light) {
   return group;
 }
 
-// What's chasing you: the security drone in space, the anglerfish underwater.
-// Hangs back out of view, closes in when you get hit, and catches you if you
-// get hit again before it falls back.
+// Mamu, the traffic police, on his motorbike: after Riya for every rule she
+// breaks, on the road and down the shortcuts. Hangs back out of view, closes in
+// when she clips something, and catches her if she does it again before he
+// falls back.
 export class Chaser {
   constructor(scene) {
     this.object = new THREE.Group();
-    this.models = {
-      space: chaserSprite('chaser-drone', 1.5, { color: 0xff3355, size: 0.16, at: [-0.28, 1.32, 0.05] }), // siren on top
-      water: chaserSprite('chaser-fish', 2.3, { color: 0xd8ff6a, size: 0.22, at: [0, 2.05, -0.3] }), // lure ahead of the head
-    };
-    this.object.add(this.models.space, this.models.water);
+    // The light sits on the beacon pole, measured on the sprite (tilted back with it).
+    this.model = chaserSprite('chaser-mamu', 1.75, { color: BEACON[0], size: 0.13, at: [0.24, 1.37, -0.36] });
+    this.object.add(this.model);
     scene.add(this.object);
     this.time = 0;
-    this.setZone('space');
     this.reset();
   }
 
@@ -59,12 +58,6 @@ export class Chaser {
     this.lane = 0;
   }
 
-  setZone(zone) {
-    this.zone = zone;
-    for (const [name, model] of Object.entries(this.models)) model.visible = name === zone;
-  }
-
-  get model() { return this.models[this.zone]; }
   get dangerous() { return this.chase > CHASER_DANGER; }
 
   alert() {
@@ -90,15 +83,10 @@ export class Chaser {
     const behind = FAR_BEHIND - (FAR_BEHIND - CLOSE_BEHIND) * Math.min(1, this.chase) - Math.max(0, this.chase - 1) * 8;
     const sway = Math.sin(this.time * 1.7) * 0.12;
     const bob = Math.sin(this.time * 4) * 0.12;
-    placeOnWall(this.object, this.lane + SIDE_OFFSET + sway, 0.4 + bob, player.z + behind);
+    placeBlended(this.object, this.lane + SIDE_OFFSET + sway, 0.05 + bob * 0.3, player.z + behind, player.flat);
     this.object.visible = behind < VISIBLE_WITHIN;
 
-    const model = this.model;
-    model.rotation.z = -sway * 1.2;
-    if (this.zone === 'space') { // siren: red, then blue
-      model.lamp.material.color.set(Math.floor(this.time * 6) % 2 ? 0x3d7bff : 0xff3355);
-    } else { // the lure pulses
-      model.lamp.scale.setScalar(1 + Math.sin(this.time * 5) * 0.25);
-    }
+    this.model.rotation.z = -sway * 1.2;
+    this.model.lamp.material.color.set(BEACON[Math.floor(this.time * 6) % 2]);
   }
 }

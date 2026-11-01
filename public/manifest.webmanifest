@@ -1,7 +1,7 @@
 {
-  "name": "Courier Runner",
-  "short_name": "Courier",
-  "description": "Low-poly sci-fi endless runner: deliver the parcel through space and ocean.",
+  "name": "Patna Rush",
+  "short_name": "Patna Rush",
+  "description": "Scooter delivery runner through Bihar traffic: get Nani's radio from Patna to Muzaffarpur with traffic police Mamu on your tail.",
   "start_url": ".",
   "display": "fullscreen",
   "background_color": "#05060f",

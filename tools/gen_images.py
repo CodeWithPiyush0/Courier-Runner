@@ -47,14 +47,15 @@ BOARD = "a hoverboard hand-painted like an Indian truck, saffron with pink and t
 
 # name: (model, aspect ratio, kind, prompt). kind decides the post-processing.
 ASSETS = {
-    "keyart": (PRO, "16:9", "cover", f"""Video game key art. {RIYA} She rides {BOARD}, bursting out of an
-octagonal space-station cargo tunnel lined with warm lights. A small red-eyed security drone with a siren chases
-her. The lower part of the scene breaks into a deep teal ocean with pink coral, kelp and bubbles, where a giant
-anglerfish with a glowing lure follows. Dynamic wide shot, lots of motion, Riya on the left third. {STYLE}"""),
-    "keyart-tall": (PRO, "9:16", "cover", f"""Vertical phone wallpaper video game key art. {RIYA} She rides
-{BOARD}, diving from an octagonal space-station cargo tunnel at the top into a deep teal ocean at the bottom with
-pink coral, kelp, bubbles and a giant anglerfish with a glowing lure below. A small red-eyed security drone
-chases from above. Riya in the upper half. {STYLE}"""),
+    "keyart": (PRO, "16:9", "cover", f"""Video game key art, real-world India today, not futuristic. {RIYA} She rides a
+mint-green Indian scooter at full tilt through a crowded old Patna street at golden hour, weaving between an auto-rickshaw
+and a cow, a traffic policeman with a white helmet and mirrored sunglasses chasing on a police motorbike, whistle
+blowing. A concrete underpass mouth ahead, litchi trees in the far distance. Dynamic wide shot, Riya on the left third.
+Gently stylised 3D render like a modern animated film, warm colours. No text, no logos."""),
+    "keyart-tall": (PRO, "9:16", "cover", f"""Vertical phone wallpaper video game key art, real-world India today. {RIYA} She
+rides a mint-green Indian scooter towards us through a crowded Patna street at golden hour, a traffic policeman on a police
+motorbike chasing behind, autos and a cow around, litchi trees and a village house far away. Riya in the upper half.
+Gently stylised 3D render like a modern animated film, warm colours. No text, no logos."""),
     "portrait-riya": (PRO, "1:1", "portrait", f"""Head-and-shoulders character portrait. {RIYA} She looks at the
 viewer with a cheeky, determined grin, one hand giving a thumbs up. Background: a softly blurred station
 tunnel with warm lights. Centred. {STYLE}"""),
@@ -71,11 +72,11 @@ slightly frazzled middle-aged Indian mission-control operator with a thick moust
 wearing a radio headset with a microphone and a navy uniform with an orange parcel badge, holding a small
 glass of chai. Behind him glowing control-room monitors of a space station. Friendly comedic expression,
 looking at the viewer, centred. {STYLE}"""),
-    "icon-magnet": (FAST, "1:1", "sticker", f"{STICKER} A horseshoe magnet, rani pink with cream tips, little sparks."),
-    "icon-shield": (FAST, "1:1", "sticker", f"{STICKER} A round teal shield with a lotus motif."),
-    "icon-boost": (FAST, "1:1", "sticker", f"{STICKER} A saffron double chevron arrow with a flame trail."),
-    "icon-oxygen": (FAST, "1:1", "sticker", f"{STICKER} A cluster of three shiny sky-blue air bubbles."),
-    "icon-coin": (FAST, "1:1", "sticker", f"{STICKER} A faceted emerald-green gem, octahedron shaped, with a tiny shine."),
+    "icon-magnet": (FAST, "1:1", "sticker", f"{STICKER} A phone showing a UPI QR code, with little rupee sparks."),
+    "icon-shield": (FAST, "1:1", "sticker", f"{STICKER} A red scooter helmet with a dark visor."),
+    "icon-boost": (FAST, "1:1", "sticker", f"{STICKER} A small glass of steaming cutting chai."),
+    "icon-battery": (FAST, "1:1", "sticker", f"{STICKER} A green phone battery, fully charged, with a lightning bolt."),
+    "icon-coin": (FAST, "1:1", "sticker", f"{STICKER} A shiny gold Indian rupee coin with the ₹ symbol."),
     "emblem": (PRO, "1:1", "sticker", f"""A die-cut sticker emblem in the style of hand-painted Indian truck
 art: a taped cardboard parcel with small saffron wings riding a tiny painted hoverboard, a marigold garland
 around it, bold dark outlines and a thick white sticker border, centred on a perfectly flat pure green (#00FF00)
@@ -86,7 +87,7 @@ background with nothing else. No text, no letters."""),
 def generate(model, aspect, prompt):
     response = gemini.request(f"models/{model}:generateContent", {
         "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"responseModalities": ["IMAGE"], "imageConfig": {"aspectRatio": aspect}},
+        "generationConfig": {"responseModalities": ["IMAGE"], "imageConfig": {"aspectRatio": aspect, "imageSize": "2K"}},
     })
     _, data = gemini.inline_data(response)
     return Image.open(io.BytesIO(data)).convert("RGB")

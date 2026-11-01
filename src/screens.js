@@ -9,16 +9,17 @@ const HOW_TO = `
     <tr><td>${TOUCH ? 'Swipe ← →' : '← → / A D'}</td><td>change lane</td></tr>
     <tr><td>${TOUCH ? 'Swipe up' : '↑ / W'}</td><td>jump</td></tr>
     <tr><td>${TOUCH ? 'Swipe down' : '↓ / S'}</td><td>slide (in the air: slam down)</td></tr>
-    <tr><td>${TOUCH ? 'Double tap' : 'Space'}</td><td>gravity flip to the far wall</td></tr>
+    <tr><td>${TOUCH ? 'Double tap' : 'Space'}</td><td>in a tunnel: flip to the ceiling</td></tr>
     ${TOUCH ? '' : '<tr><td>P / Esc</td><td>pause</td></tr><tr><td>M</td><td>mute</td></tr>'}
   </table>
   <ul class="rules">
-    <li><b>Deliver the parcel</b>: reach the drop-off at the end of each route.</li>
-    <li><b>Crates and coral</b> crash you. <b>Lasers, urchins and jellyfish</b> zap you and bring the chaser
-      close; two quick zaps and you're caught.</li>
-    <li><b>Underwater</b>, grab bubbles or run out of air.</li>
-    <li><b>Power-ups</b>: magnet pulls in gems, shield takes one hit, boost smashes through everything.</li>
-    <li><b>Stars</b>: deliver, collect most of the gems, and keep the parcel undamaged.</li>
+    <li><b>Deliver the parcel</b>: reach the delivery point at the end of each route.</li>
+    <li><b>Autos, cows and barricades</b> crash you. Clip a <b>pothole, speed breaker or barrier</b> and
+      traffic Mamu closes in; do it twice quickly and he catches you.</li>
+    <li><b>Shortcuts</b>: when the road jams, ride the nala. In there you can ride the walls and flip to the
+      ceiling, but keep your <b>phone torch</b> charged with batteries.</li>
+    <li><b>Power-ups</b>: UPI magnet pulls in tips, helmet takes one hit, cutting chai smashes through everything.</li>
+    <li><b>Stars</b>: deliver, collect most of the tips, and don't break any rules.</li>
   </ul>`;
 
 const percent = (name) => Math.round(settings.get(name) * 100);
@@ -72,9 +73,9 @@ export class Screens {
            ${progress.started ? 'Continue' : 'Start'} · ${level.title}</button>`;
     this.render(`
       <img class="emblem" src="/art/emblem.webp" alt="">
-      <h1>Courier Runner</h1>
-      <p class="tagline">Riya from Patna has one parcel to deliver, through a space station and an alien ocean.
-        And the parcel is humming.</p>
+      <h1>Patna Rush</h1>
+      <p class="tagline">Riya has one parcel to deliver: Nani's old radio, from Patna to Muzaffarpur, before her
+        birthday ends. And a traffic police Mamu is on her tail.</p>
       <div class="buttons">
         ${main}
         <button data-action="route">Delivery route</button>
@@ -130,7 +131,7 @@ export class Screens {
       </li>`;
     this.render(`
       <h2>Delivery Route</h2>
-      <p class="sub">Chandra-7 → Ocean Planet Neela</p>
+      <p class="sub">Patna → Muzaffarpur</p>
       <ul class="route-list">${stops}${endless}</ul>
       <div class="buttons"><button class="ghost" data-action="back">Back</button></div>`, {
       play: (id) => this.actions.play(Number(id)),
@@ -217,8 +218,8 @@ export class Screens {
       <div class="result-stars">${starRow(stars)}</div>
       <ul class="result-lines">
         ${line(true, 'Parcel delivered')}
-        ${line(gems >= gemTotal * 0.6, `Tips collected: ${gems} / ${gemTotal} gems`)}
-        ${line(undamaged, undamaged ? 'Parcel undamaged' : 'Parcel took a hit')}
+        ${line(gems >= gemTotal * 0.6, `Tips collected: ₹${gems * 10} of ₹${gemTotal * 10}`)}
+        ${line(undamaged, undamaged ? 'No rules broken' : 'Mamu saw you break a rule')}
       </ul>
       <div class="buttons">
         ${hasNext ? '<button class="primary" data-action="next">Next delivery</button>' : ''}
@@ -267,8 +268,8 @@ export class Screens {
     this.render(`
       <img class="emblem" src="/art/portrait-nani.webp" alt="" style="border-radius:50%">
       <h1>The End</h1>
-      <p class="tagline">Nani's night-light is home, the mother fish stayed for litti-chokha, and Riya got her
-        five stars.</p>
+      <p class="tagline">Nani's radio is home and playing, Mamu cancelled the challan, and everyone is eating
+        Shahi litchi. Riya got her five stars.</p>
       <p class="sub">Endless mode unlocked</p>
       <div class="buttons">
         <button class="primary" data-action="endless">Play Endless</button>

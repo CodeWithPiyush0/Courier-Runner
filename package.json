@@ -9,6 +9,7 @@
     "preview": "vite preview --host",
     "art": "python tools/gen_images.py",
     "voice": "python tools/gen_voice.py",
+    "voice-local": "python tools/gen_voice_local.py",
     "music": "python tools/gen_music.py",
     "story-art": "python tools/gen_story_art.py"
   },

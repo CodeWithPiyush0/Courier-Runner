@@ -27,3 +27,10 @@ node_modules/
 _build_report.json
 dist/
 tools/out/
+
+# raw images from the Codex art brief (imported into public/art by tools/import_art.py)
+art-requests/out/
+
+# first-round Codex images that were replaced (kept locally for comparison)
+art-requests/round1/
+art-requests/round2-real/

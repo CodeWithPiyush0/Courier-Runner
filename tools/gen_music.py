@@ -27,16 +27,13 @@ TRIES = 3
 
 COMMON = "Instrumental only, absolutely no vocals or singing. Loops well, no long intro, no fade-out ending."
 TRACKS = {
-    "menu": f"""Chill, slightly mysterious lo-fi synth groove for the main menu of a sci-fi delivery video game,
-92 BPM, warm analog pads, soft tabla groove, playful plucked sitar-like synth melody, a little funny swagger.
+    "menu": f"""Warm, playful instrumental for the title screen of a comedy delivery game set in Bihar, India, 95 BPM:
+dholak and tabla groove, a cheeky shehnai-like melody, banjo and harmonium, a hint of Bhojpuri folk-pop, golden-hour mood.
 {COMMON}""",
-    "space": f"""Driving synthwave chase music for a sci-fi endless runner set in a neon space station, 120 BPM,
-pumping bassline, bright arpeggiated synths, punchy electronic drums layered with fast tabla rolls, a sitar-like
-synth lead hook, energetic and playful. {COMMON}""",
-    "water": f"""Electronic underwater chase soundtrack for a sci-fi video game set deep in a glowing coral ocean,
-108 BPM. Deep pulsing synth bass, watery bubbly synth plucks and santoor-like arpeggios drenched in reverb, dreamy
-aquatic pads, filtered electronic drums with muffled tabla. Tense, mysterious and slightly playful. No guitars, no
-folk instruments. {COMMON}""",
+    "road": f"""Upbeat chase music for a scooter racing through crowded Patna traffic, 124 BPM: driving dhol and dholak beat,
+bouncy Bhojpuri folk-pop bass, banjo riffs, honky brass stabs like a wedding band, energetic and funny. {COMMON}""",
+    "tunnel": f"""Echoing, tense instrumental for riding through a dark underground drain tunnel, 112 BPM: dripping
+percussion, deep dub bass, reverb-soaked tabla, low drones and a sneaky plucked melody. Mysterious and playful. {COMMON}""",
 }
 
 

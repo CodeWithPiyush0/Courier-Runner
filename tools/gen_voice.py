@@ -42,7 +42,7 @@ SPEAKERS = {
     "dispatch": {"voice": "Puck", "tags": "[cheerful] [Indian English accent]", "language": "en-IN", "indian": True},
     "riya": {"voice": "Leda", "tags": "[energetic] [young woman] [Indian English accent]", "language": "en-IN", "indian": True},
     "nani": {"voice": "Gacrux", "tags": "[warm] [elderly grandmother] [Indian English accent]", "language": "en-IN", "indian": True},
-    "security": {"voice": "Charon", "tags": "", "language": "en-US", "indian": False},  # tags get read aloud here
+    "mamu": {"voice": "Fenrir", "tags": "[gruff] [loud] [Indian English accent from Bihar]", "language": "en-IN", "indian": True},
 }
 MIN_MATCH = 0.7  # transcript vs script word similarity needed to keep a take
 TAKES = 4
@@ -60,6 +60,8 @@ def script_lines():
         " : Array.isArray(v) ? v.forEach(walk) : v && typeof v === 'object' ? Object.values(v).forEach(walk) : 0;"
         "Object.values(d).forEach(walk);"
         "for (const level of s.LEVELS) for (const l of [...level.intro, ...level.outro]) out.set(l.text, l.who);"
+        "for (const t of d.HIT_LINES) out.set(t, 'mamu');"
+        "for (const t of d.LOW_BATTERY_LINES) out.set(t, 'riya');"
         "for (const l of s.ENDING) out.set(l.text, l.who);"
         "console.log(JSON.stringify([...out].map(([text, who]) => [who, text])));"
     )
@@ -197,7 +199,10 @@ def main():
             if not usable(speaker, text, score, heard):
                 print(f"bad take, redoing: {heard!r} ({score:.2f})")
                 path.unlink()
-    todo = [(s, t) for s, t in chosen if args.force or not (OUT / file_for(s, t)).exists()]
+    local_list = OUT / "local.json"  # stand-in takes from gen_voice_local.py, to be replaced
+    local = set(json.loads(local_list.read_text())) if local_list.exists() else set()
+    todo = [(s, t) for s, t in chosen
+            if args.force or file_for(s, t) in local or not (OUT / file_for(s, t)).exists()]
     if args.limit:
         todo = todo[:args.limit]
     print(f"{len(lines)} lines, {len(todo)} to voice")
@@ -205,7 +210,9 @@ def main():
     failed = []
     for i, (speaker, text) in enumerate(todo, 1):
         print(f"[{i}/{len(todo)}] {speaker}: {text}")
-        if not record(speaker, text):
+        if record(speaker, text):
+            local.discard(file_for(speaker, text))
+        else:
             failed.append(f"{speaker}: {text}")
         time.sleep(1)
     if failed:
@@ -214,6 +221,7 @@ def main():
     manifest = {t: f"vo/{file_for(s, t)}" for s, t in lines if (OUT / file_for(s, t)).exists()}
     (OUT / "manifest.json").write_text(json.dumps(manifest, indent=1, ensure_ascii=False), encoding="utf-8")
     print(f"manifest: {len(manifest)}/{len(lines)} lines voiced")
+    local_list.write_text(json.dumps(sorted(local), indent=1))
 
     # Recordings of lines that were edited or removed from the scripts.
     used = {Path(f).name for f in manifest.values()}
