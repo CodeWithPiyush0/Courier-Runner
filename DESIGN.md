@@ -123,7 +123,11 @@ channels. Harder ones unlock with distance.
 Delivery 1 opens with a real 3D drone shot: high over old Patna (`city.js`,
 blocks of uneven houses wearing the painted shopfronts on every wall, clean
 flat roofs (concrete, whitewash, terracotta) with their clutter in 3D (parapets,
-stair huts, water tanks, solar panels, washing lines), trees, walls darkening towards the lanes, and sun shadows baked onto the ground;
+stair huts, water tanks, solar panels, washing lines); within 60 m of the street
+the roofs get close-up detail (cast-concrete slabs with joints, patches and
+cracks, rusty rods sticking up for the next floor, stair cabins with doors,
+washing on poles, dishes, brick piles, tanks on brick platforms), and the
+gameplay street's own buildings get parapets and stair cabins for the shot; trees, walls darkening towards the lanes, and sun shadows baked onto the ground;
 the shot gets a strong side sun and soft fill), the camera flies down
 the street and comes down behind Bholu in one continuous move. 3D camera moves
 always stay behind him (his sprites are painted from behind). Story pictures fill the screen (no particles); characters stay fully in frame
@@ -156,6 +160,13 @@ never changes saved progress. `window.game` is available in the console too.
   starts (supplied by the developer, trimmed to start at 0:06; the original is
   kept in `private/music/`), filtered to sound like it comes out of an old radio.
   All music ducks to 30% under any voice.
+
+## Crash sounds
+Every crash starts with a tyre screech, then depends on what was hit: vehicles
+crunch with breaking glass and a stuck horn; a cow thuds and moos; barricades
+and boom barriers clang; carts, bricks and tunnel junk clatter. Clipping
+something low is a thud and a cartoon boing; a banner or barrier is a cloth
+thwack; live cables spark.
 
 ## Coins and horns
 Coins are big glowing gold ₹ coins with a halo and a twinkle, bobbing as they
@@ -199,8 +210,10 @@ ChatGPT whose results `python tools/import_art.py art-requests/out` imports.
 
 ## Menus, settings, phones
 Main menu, How to play, Settings (music / effects / voice volume, vibration,
-graphics Auto / High / Low), Pause (also automatic when the tab is left), Game
-over with a quip. Swipe / double-tap controls, notch-safe layout, vibration,
+graphics Auto / High / Low), Pause (the Chai Break card: Resume / Start over /
+Settings / Main menu). Leaving the tab or minimising the window pauses a run or
+a cutscene and silences all sound; back again, the card waits, and Resume
+replays the cutscene line that was cut off. Game over with a quip. Swipe / double-tap controls, notch-safe layout, vibration,
 installable to the home screen, and auto graphics quality that drops resolution
 if the frame rate stays under 40 fps.
 

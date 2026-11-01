@@ -80,22 +80,111 @@ const TERRACOTTA = new THREE.Color('#b8653f');
 const PLANTS = ['#4f9a3c', '#3f8a3a', '#6aa84a'].map((c) => new THREE.Color(c));
 const CLOTHES = ['#d62828', '#ffc21a', '#1f5fbf', '#ffffff', '#e05aa0', '#2e8b3a'].map((c) => new THREE.Color(c));
 
-// A barely-there concrete grain for the roofs (white, so each roof's colour shows true).
-function concreteTexture() {
+// A close-up roof surface: cast-concrete slabs with expansion joints, patched
+// repairs, hairline cracks, a drain hole and grit. Nearly white, so each roof's
+// colour shows through; no painted shadows (those looked like stains).
+export function roofTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#f6f4ef';
+  ctx.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 26; i++) { // repaired patches, a shade lighter or darker
+    const v = 228 + Math.floor(Math.random() * 26);
+    ctx.fillStyle = `rgba(${v},${v - 2},${v - 6},0.55)`;
+    ctx.fillRect(Math.random() * 512, Math.random() * 512, 30 + Math.random() * 120, 20 + Math.random() * 90);
+  }
+  ctx.strokeStyle = 'rgba(90,80,70,0.28)'; // expansion joints
+  ctx.lineWidth = 3;
+  for (let k = 128; k < 512; k += 128) {
+    ctx.beginPath(); ctx.moveTo(k, 0); ctx.lineTo(k, 512); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, k); ctx.lineTo(512, k); ctx.stroke();
+  }
+  ctx.strokeStyle = 'rgba(70,60,55,0.35)'; // hairline cracks
+  ctx.lineWidth = 1.2;
+  for (let i = 0; i < 6; i++) {
+    let x = Math.random() * 512;
+    let y = Math.random() * 512;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    for (let j = 0; j < 6; j++) {
+      x += (Math.random() - 0.5) * 50;
+      y += Math.random() * 30;
+      ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+  for (let i = 0; i < 1500; i++) { // grit
+    const v = 200 + Math.floor(Math.random() * 50);
+    ctx.fillStyle = `rgba(${v},${v},${v},0.6)`;
+    ctx.fillRect(Math.random() * 512, Math.random() * 512, 2, 2);
+  }
+  ctx.fillStyle = 'rgba(40,35,30,0.7)'; // the drain hole
+  ctx.beginPath(); ctx.arc(470, 470, 9, 0, Math.PI * 2); ctx.fill();
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.anisotropy = 4;
+  return texture;
+}
+
+// A stair cabin's wall (mumty): rough plaster with grime rising from the roof,
+// a painted wooden door and a little vent window. White plaster, so each
+// cabin's colour tints it.
+export function cabinTexture() {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = 128;
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, 128, 128);
-  for (let i = 0; i < 900; i++) {
-    const v = 236 + Math.floor(Math.random() * 20);
+  for (let i = 0; i < 400; i++) { // plaster texture
+    const v = 225 + Math.floor(Math.random() * 30);
     ctx.fillStyle = `rgb(${v},${v},${v})`;
-    ctx.fillRect(Math.random() * 128, Math.random() * 128, 2, 2);
+    ctx.fillRect(Math.random() * 128, Math.random() * 128, 3, 3);
+  }
+  const grime = ctx.createLinearGradient(0, 84, 0, 128);
+  grime.addColorStop(0, 'rgba(90,80,70,0)');
+  grime.addColorStop(1, 'rgba(90,80,70,0.45)');
+  ctx.fillStyle = grime;
+  ctx.fillRect(0, 84, 128, 44);
+  ctx.fillStyle = '#5b4a3a'; // door frame
+  ctx.fillRect(40, 38, 48, 90);
+  ctx.fillStyle = '#3d6d8a'; // the door
+  ctx.fillRect(44, 42, 40, 86);
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(48, 48, 14, 34);
+  ctx.strokeRect(66, 48, 14, 34);
+  ctx.strokeRect(48, 88, 32, 34);
+  ctx.fillStyle = '#2b3340'; // vent window
+  ctx.fillRect(98, 20, 18, 12);
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; // the slab's shadow along the top
+  ctx.fillRect(0, 0, 128, 6);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+// A plastic water tank's moulded ridges (the black Sintex on every Bihar roof).
+export function tankTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 8;
+  canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  for (let y = 0; y < 64; y += 8) {
+    ctx.fillStyle = '#2a2a2e';
+    ctx.fillRect(0, y, 8, 5);
+    ctx.fillStyle = '#121214';
+    ctx.fillRect(0, y + 5, 8, 3);
   }
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
 }
+
+const NEAR_X = 60; // houses this close to the street (under the drone) get the close-up roof details
+const RUST = new THREE.Color('#6e3b22');
+const BRICK = new THREE.Color('#a8513a');
 const GROUND_SHADE = new THREE.Color(0.55, 0.55, 0.58); // the foot of a wall in a narrow lane
 // Roof finishes, seen from above: plain and weathered concrete, whitewash, terracotta, painted terraces.
 const ROOF_COLOURS = ['#d8d3ca', '#cbc4b8', '#e8e3da', '#c98d70', '#e2c6bb', '#bccbd0', '#d9ceb2'].map((c) => new THREE.Color(c));
@@ -119,14 +208,17 @@ export class City {
     };
     this.facades = FACADES.map((name) => ({ material: material('facades', name), name }));
     this.plain = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }); // parapets, stair huts, panels, washing
-    this.roof = new THREE.MeshStandardMaterial({ map: concreteTexture(), vertexColors: true, roughness: 1 });
-    this.disposables.push(this.plain, this.roof, this.roof.map);
+    this.roofNear = new THREE.MeshStandardMaterial({ map: roofTexture(), vertexColors: true, roughness: 1 });
+    this.cabin = new THREE.MeshStandardMaterial({ map: cabinTexture(), vertexColors: true, roughness: 1 });
+    this.disposables.push(this.plain, this.roofNear, this.roofNear.map, this.cabin, this.cabin.map);
     this.build(startZ, streetFrom, streetTo);
     scene.add(this.group);
   }
 
   build(z0, streetFrom, streetTo) {
-    const newSet = () => ({ walls: FACADES.map(() => new Quads()), roof: new Quads(), plain: new Quads() });
+    const newSet = () => ({ walls: FACADES.map(() => new Quads()), roofNear: new Quads(), plain: new Quads(), cabins: new Quads() });
+    const rods = []; // thin uprights: rusty iron rods waiting for the next floor, washing-line poles, dish masts
+    const dishes = [];
     const city = newSet();
     const ahead = newSet();
     const tanks = [];
@@ -148,11 +240,16 @@ export class City {
       const finish = pick(ROOF_COLOURS);
       const shade = finish.clone().multiplyScalar(0.8);
       const band = 1.1;
-      set.roof.top(x0 + band, y1, za + band, x1 - band, zb - band, { bottom: finish, top: finish });
-      set.roof.top(x0, y1, za, x1, za + band, { bottom: finish, top: shade }); // (top() tints its far-z edge with `top`)
-      set.roof.top(x0, y1, zb - band, x1, zb, { bottom: shade, top: finish });
-      set.roof.add([x0, y1, zb - band], [x0 + band, y1, zb - band], [x0 + band, y1, za + band], [x0, y1, za + band], { bottom: shade, top: shade });
-      set.roof.add([x1 - band, y1, zb - band], [x1, y1, zb - band], [x1, y1, za + band], [x1 - band, y1, za + band], { bottom: shade, top: shade });
+      const near = set !== city || Math.abs((x0 + x1) / 2) < NEAR_X;
+      { // cast-concrete slabs, tiled every 6 m
+        const u = (x1 - x0 - band * 2) / 6;
+        const v = (zb - za - band * 2) / 6;
+        set.roofNear.add([x0 + band, y1, zb - band], [x1 - band, y1, zb - band], [x1 - band, y1, za + band], [x0 + band, y1, za + band], { bottom: finish, top: finish, u, v });
+      }
+      set.roofNear.top(x0, y1, za, x1, za + band, { bottom: finish, top: shade }); // (top() tints its far-z edge with `top`)
+      set.roofNear.top(x0, y1, zb - band, x1, zb, { bottom: shade, top: finish });
+      set.roofNear.add([x0, y1, zb - band], [x0 + band, y1, zb - band], [x0 + band, y1, za + band], [x0, y1, za + band], { bottom: shade, top: shade });
+      set.roofNear.add([x1 - band, y1, zb - band], [x1, y1, zb - band], [x1, y1, za + band], [x1 - band, y1, za + band], { bottom: shade, top: shade });
       // The parapet: walls in the house's colour, with a pale cap along the top.
       const wall = pick(WALL_COLOURS);
       const cap = wall.clone().lerp(WHITE, 0.55);
@@ -178,8 +275,9 @@ export class City {
         const blue = new THREE.Color('#2c4a78');
         set.plain.add([px, y1 + 0.3, pz + 1.6], [px + 2.6, y1 + 0.3, pz + 1.6], [px + 2.6, y1 + 1.1, pz], [px, y1 + 1.1, pz], { bottom: blue, top: blue.clone().multiplyScalar(1.4) });
       }
-      if (set === city && Math.random() < 0.18) { // a line of washing
+      if (set === city && Math.random() < (near ? 0.35 : 0.18)) { // a line of washing (on two poles, close up)
         const lz = rand(za + 1.5, zb - 1.5);
+        if (near) for (const px of [x0 + 0.8, x1 - 0.8]) rods.push([px, y1, lz, 1.9, new THREE.Color('#5a5a5a')]);
         let lx = x0 + 1.2;
         while (lx < x1 - 2) {
           const cloth = pick(CLOTHES);
@@ -187,11 +285,33 @@ export class City {
           lx += 1.15;
         }
       }
-      if (Math.random() < 0.4) { // stair hut
+      if (Math.random() < (near ? 0.6 : 0.4)) { // stair cabin (mumty): plastered, with a door, under a slab
         const hx = rand(x0 + 1, x1 - 3.6);
         const hz = rand(za + 1, zb - 3.6);
-        set.plain.sides(hx, y1, hz, hx + 2.6, y1 + 2.6, hz + 2.6, { bottom: wall.clone().multiplyScalar(0.85), top: wall });
-        set.plain.top(hx, y1 + 2.6, hz, hx + 2.6, hz + 2.6, { bottom: GROUND_SHADE, top: GROUND_SHADE });
+        set.cabins.sides(hx, y1, hz, hx + 2.6, y1 + 2.6, hz + 2.6, { bottom: wall, top: wall });
+        const slab = cap.clone().multiplyScalar(0.9);
+        set.plain.sides(hx - 0.15, y1 + 2.6, hz - 0.15, hx + 2.75, y1 + 2.8, hz + 2.75, { bottom: slab.clone().multiplyScalar(0.8), top: slab });
+        set.plain.top(hx - 0.15, y1 + 2.8, hz - 0.15, hx + 2.75, hz + 2.75, { bottom: slab, top: slab });
+      }
+      if (near && set === city) {
+        if (Math.random() < 0.45) { // rusty iron rods sticking up from the corner columns
+          for (const [cx, cz] of [[x0 + 0.4, za + 0.4], [x1 - 0.4, za + 0.4], [x0 + 0.4, zb - 0.4], [x1 - 0.4, zb - 0.4]]) {
+            if (Math.random() < 0.4) continue;
+            for (const [ox, oz] of [[-0.1, -0.1], [0.1, -0.1], [-0.1, 0.1], [0.1, 0.1]]) rods.push([cx + ox, y1, cz + oz, rand(1.1, 1.6), RUST]);
+          }
+        }
+        if (Math.random() < 0.25) { // a satellite dish on a short mast
+          const dx = rand(x0 + 1.5, x1 - 1.5);
+          const dz = rand(za + 1.5, zb - 1.5);
+          rods.push([dx, y1, dz, 1.2, new THREE.Color('#888888')]);
+          dishes.push([dx, y1 + 1.25, dz]);
+        }
+        if (Math.random() < 0.15) { // a pile of bricks for the next floor
+          const bx = rand(x0 + 1.5, x1 - 3);
+          const bz = rand(za + 1.5, zb - 2.5);
+          set.plain.sides(bx, y1, bz, bx + 1.4, y1 + 0.5, bz + 0.9, { bottom: BRICK.clone().multiplyScalar(0.8), top: BRICK });
+          set.plain.top(bx, y1 + 0.5, bz, bx + 1.4, bz + 0.9, { bottom: BRICK, top: BRICK });
+        }
       }
       return y1;
     };
@@ -220,7 +340,13 @@ export class City {
                 continue;
               }
               const top = house(set, x0, za + 0.15, x1, zb - 0.15);
-              if (!nearStreet && Math.random() < 0.65) tanks.push([rand(x0 + 2, x1 - 2), top, rand(za + 2, zb - 2)]);
+              if (!nearStreet && Math.random() < 0.65) {
+                const tx = rand(x0 + 2, x1 - 2);
+                const tz = rand(za + 2, zb - 2);
+                const raised = Math.abs((x0 + x1) / 2) < NEAR_X; // close up, on a little brick platform
+                if (raised) city.plain.sides(tx - 0.9, top, tz - 0.9, tx + 0.9, top + 0.6, tz + 0.9, { bottom: BRICK.clone().multiplyScalar(0.75), top: BRICK });
+                tanks.push([tx, top + (raised ? 0.6 : 0), tz]);
+              }
             }
           }
         }
@@ -231,8 +357,21 @@ export class City {
       this.group.add(city.walls[i].mesh(this.facades[i].material));
       this.streetAhead.add(ahead.walls[i].mesh(this.facades[i].material));
     }
-    this.group.add(city.roof.mesh(this.roof), city.plain.mesh(this.plain));
-    this.streetAhead.add(ahead.roof.mesh(this.roof));
+    this.group.add(city.roofNear.mesh(this.roofNear), city.plain.mesh(this.plain), city.cabins.mesh(this.cabin));
+    this.streetAhead.add(ahead.roofNear.mesh(this.roofNear), ahead.plain.mesh(this.plain), ahead.cabins.mesh(this.cabin));
+
+    // Rods, poles and masts (thin boxes) and dishes, instanced.
+    const rodGeo = new THREE.BoxGeometry(0.05, 1, 0.05).translate(0, 0.5, 0);
+    const rodMesh = new THREE.InstancedMesh(rodGeo, new THREE.MeshStandardMaterial({ roughness: 0.8 }), Math.max(1, rods.length));
+    rods.forEach(([x, y, z, h, colour], i) => {
+      rodMesh.setMatrixAt(i, new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion(), new THREE.Vector3(1, h, 1)));
+      rodMesh.setColorAt(i, colour);
+    });
+    const dishGeo = new THREE.CylinderGeometry(0.45, 0.25, 0.08, 14).rotateX(-1.1);
+    const dishMesh = new THREE.InstancedMesh(dishGeo, new THREE.MeshStandardMaterial({ color: 0xd8d8d8, roughness: 0.5 }), Math.max(1, dishes.length));
+    dishes.forEach(([x, y, z], i) => dishMesh.setMatrixAt(i, new THREE.Matrix4().makeTranslation(x, y, z)));
+    this.group.add(rodMesh, dishMesh);
+    this.disposables.push(rodGeo, rodMesh.material, dishGeo, dishMesh.material);
     this.streetAhead.add(ahead.plain.mesh(this.plain));
     this.group.add(this.streetAhead);
 
@@ -252,7 +391,7 @@ export class City {
 
     // A few real water tanks and trees, for parallax as the drone flies over.
     const tankGeo = new THREE.CylinderGeometry(0.75, 0.75, 1.5, 12).translate(0, 0.75, 0);
-    const tankMesh = new THREE.InstancedMesh(tankGeo, new THREE.MeshStandardMaterial({ color: 0x1d1d20, roughness: 0.6 }), Math.max(1, tanks.length));
+    const tankMesh = new THREE.InstancedMesh(tankGeo, new THREE.MeshStandardMaterial({ map: tankTexture(), roughness: 0.55 }), Math.max(1, tanks.length));
     tanks.forEach(([x, y, z], i) => tankMesh.setMatrixAt(i, new THREE.Matrix4().makeTranslation(x, y, z)));
     const lidGeo = new THREE.CylinderGeometry(0.42, 0.5, 0.22, 12).translate(0, 1.6, 0); // the tank's ridged lid
     const lidMesh = new THREE.InstancedMesh(lidGeo, new THREE.MeshStandardMaterial({ color: 0x3a3a40, roughness: 0.5 }), Math.max(1, tanks.length));
@@ -267,7 +406,7 @@ export class City {
     leafMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(Math.max(1, trees.length) * 3), 3);
     trees.forEach((_, i) => leafMesh.setColorAt(i, new THREE.Color(pick(['#4f9a3c', '#3f8a3a', '#6aa84a', '#5c9c3f']))));
     this.group.add(tankMesh, leafMesh);
-    this.disposables.push(tankGeo, tankMesh.material, leafGeo, leafMesh.material);
+    this.disposables.push(tankGeo, tankMesh.material, tankMesh.material.map, leafGeo, leafMesh.material);
   }
 
   // Shadows baked onto the ground: each house throws the shape of its

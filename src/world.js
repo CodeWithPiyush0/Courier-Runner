@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { cabinTexture, roofTexture, tankTexture } from './city.js';
 import {
   LANES, LANE_WIDTH, TUBE_RADIUS, CORNER_RADIUS, SEGMENT_LENGTH, SEGMENT_COUNT,
   ROAD_WIDTH, ROAD_LANE_WIDTH, placeOnWall,
@@ -37,33 +39,16 @@ const FRONT_WIDTH = SEGMENT_LENGTH * 0.96;
 const ROOF_COLOURS = ['#d8d3ca', '#cbc4b8', '#e8e3da', '#c98d70', '#e2c6bb', '#bccbd0']; // concrete, whitewash, terracotta, painted terraces
 const textureLoader = new THREE.TextureLoader();
 
+// How tall a house wearing this facade is (its picture's shape, one frontage wide).
+function facadeHeight(material) {
+  const picture = material.map.image;
+  return picture ? (FRONT_WIDTH * picture.height) / picture.width : 12;
+}
+
 function facadeMaterial(name) {
   const map = textureLoader.load(`/art/facades/${name}.webp`, (texture) => { texture.colorSpace = THREE.SRGBColorSpace; });
   map.anisotropy = 4;
   return standard(0xffffff, { map, flatShading: false, roughness: 1 });
-}
-
-const WALLS = ['#e8c9a0', '#d9a6a0', '#a8d0c4', '#f0dca0', '#c8b8d8', '#e0b080', '#b8c8a0', '#e8e0d0']; // back-row wall colours
-
-// The second row of buildings: plain painted walls with windows, AC boxes and
-// sunshades. One storey per tile; it repeats up the wall.
-const STOREY = 3.2; // metres
-function backFacade(wall) {
-  const texture = canvasTexture(256, 128, (ctx, w, h) => {
-    ctx.fillStyle = wall;
-    ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = 'rgba(0,0,0,0.07)';
-    for (let i = 0; i < 6; i++) ctx.fillRect(Math.random() * w, 0, 4 + Math.random() * 10, h);
-    for (const x of [22, 100, 178]) {
-      ctx.fillStyle = Math.random() < 0.3 ? '#ffd27a' : '#2b3340';
-      ctx.fillRect(x, 30, 56, 64);
-      ctx.fillStyle = 'rgba(255,255,255,0.25)';
-      ctx.fillRect(x, 30, 56, 6); // sunshade
-      if (Math.random() < 0.35) { ctx.fillStyle = '#d8d4cc'; ctx.fillRect(x + 8, 96, 40, 18); } // AC box
-    }
-  });
-  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-  return texture;
 }
 
 // The road's daytime haze, where the ground and sky meet (also the fog colour; see main.js).
@@ -216,6 +201,28 @@ function kerbStripes() {
   return texture;
 }
 
+// A roof's parapet: four low walls round a footprint (w along x, d along z), its base at y = 0.
+function parapetGeometry(w, d) {
+  const lip = 0.25;
+  const h = 0.9;
+  const wall = (sx, sz, x, z) => new THREE.BoxGeometry(sx, h, sz).translate(x, h / 2, z);
+  return mergeGeometries([
+    wall(w, lip, 0, -d / 2 + lip / 2), wall(w, lip, 0, d / 2 - lip / 2),
+    wall(lip, d, -w / 2 + lip / 2, 0), wall(lip, d, w / 2 - lip / 2, 0),
+  ]);
+}
+
+// A roof kit: a parapet and, often, a stair cabin and a water tank. Hidden
+// unless the drone is up (World.roofDetail).
+function roofKit(materials, parapet, withTank = true) {
+  const kit = new THREE.Group();
+  kit.add(new THREE.Mesh(parapet, pick(materials.parapets)));
+  if (Math.random() < 0.55) kit.add(mesh(materials.cabinGeo, pick(materials.cabins), (Math.random() - 0.5) * 1.5, 0, (Math.random() - 0.5) * 3));
+  if (withTank && Math.random() < 0.7) kit.add(mesh(materials.tankGeo, materials.tank, (Math.random() - 0.5) * 2, 0, (Math.random() - 0.5) * 4));
+  kit.visible = false;
+  return kit;
+}
+
 function buildRoad(materials) {
   const road = new THREE.Group();
   road.add(new THREE.Mesh(materials.roadGeo, materials.asphalt));
@@ -228,26 +235,28 @@ function buildRoad(materials) {
     road.add(kerb);
   }
   const buildings = [];
+  const kits = [];
   for (const side of [-1, 1]) {
     const building = new THREE.Mesh(materials.buildingGeo);
     building.side = side;
-    road.add(building);
+    building.kit = roofKit(materials, materials.parapetFront);
+    road.add(building, building.kit);
     buildings.push(building);
+    kits.push(building.kit);
   }
-  // A second row of buildings behind, and the ground out to the haze, so the
-  // city doesn't end at the shopfronts. Flat roofs with black water tanks.
+  // A second row of houses behind, painted like the first, so the city
+  // doesn't end at the shopfronts (the drone sees them all).
   for (const side of [-1, 1]) {
-    for (const z of [-2.5, 2.5]) {
-      const storeys = 2 + Math.floor(Math.random() * 5);
-      const back = new THREE.Mesh(materials.backGeo, pick(materials.backWalls[storeys]));
-      const x = side * (BUILDING_X + BUILDING_DEPTH + 1 + Math.random() * 3);
-      back.position.set(x, FLOOR, z);
-      back.scale.y = storeys * STOREY;
-      road.add(back);
-      if (Math.random() < 0.7) {
-        road.add(mesh(materials.tankGeo, materials.tank, x + (Math.random() - 0.5) * 4, FLOOR + storeys * STOREY, z + (Math.random() - 0.5) * 2));
-      }
-    }
+    const facade = pick(materials.facades);
+    const back = new THREE.Mesh(materials.backGeo, [facade, facade, pick(materials.roofs), facade, facade, facade]);
+    const x = side * (BUILDING_X + BUILDING_DEPTH + 1 + Math.random() * 3);
+    back.position.set(x, FLOOR, 0);
+    back.scale.y = facadeHeight(facade) * (0.8 + Math.random() * 0.35);
+    road.add(back);
+    const kit = roofKit(materials, materials.parapetBack);
+    kit.position.set(x, FLOOR + back.scale.y, 0);
+    road.add(kit);
+    kits.push(kit);
   }
   road.add(mesh(materials.groundGeo, materials.ground, 0, FLOOR - 0.05, 0));
   const lamp = new THREE.Group();
@@ -263,6 +272,7 @@ function buildRoad(materials) {
   }
   road.add(wires);
   road.buildings = buildings;
+  road.kits = kits;
   road.lamp = lamp;
   road.wires = wires;
   return road;
@@ -297,7 +307,9 @@ function mesh(geometry, material, x = 0, y = 0, z = 0) {
 
 function buildMaterials() {
   const facades = FACADES.map(facadeMaterial);
-  const roofs = ROOF_COLOURS.map((colour) => standard(colour, { roughness: 1 }));
+  const roofSurface = roofTexture();
+  const cabinSurface = cabinTexture();
+  const roofs = ROOF_COLOURS.map((colour) => standard(colour, { map: roofSurface, roughness: 1, flatShading: false }));
   const stencil = canvasTexture(256, 256, (ctx, w, h) => {
     ctx.fillStyle = '#6f6b64'; ctx.fillRect(0, 0, w, h);
     ctx.fillStyle = 'rgba(30,25,20,0.35)';
@@ -312,18 +324,16 @@ function buildMaterials() {
     kerbGeo: new THREE.BoxGeometry(0.12, 0.27, SEGMENT_LENGTH),
     buildingGeo: new THREE.BoxGeometry(BUILDING_DEPTH, 1, SEGMENT_LENGTH * 0.96).translate(0, 0.5, 0),
     wireGeo: new THREE.CylinderGeometry(0.025, 0.025, ROAD_WIDTH + SIDEWALK * 2 + 2, 4).rotateZ(Math.PI / 2),
-    backGeo: new THREE.BoxGeometry(BUILDING_DEPTH + 2, 1, SEGMENT_LENGTH * 0.45).translate(0, 0.5, 0),
+    backGeo: new THREE.BoxGeometry(BUILDING_DEPTH + 2, 1, SEGMENT_LENGTH * 0.96).translate(0, 0.5, 0),
     groundGeo: new THREE.PlaneGeometry(160, SEGMENT_LENGTH).rotateX(-Math.PI / 2),
-    // backWalls[storeys]: windows on every wall (they show through the gaps), a plain roof.
-    backWalls: Object.fromEntries([2, 3, 4, 5, 6].map((storeys) => [storeys, WALLS.map((wall, i) => {
-      const texture = backFacade(wall);
-      texture.repeat.set(1.5, storeys);
-      const face = standard(0xffffff, { map: texture, roughness: 1 });
-      const roof = roofs[i % roofs.length];
-      return [face, face, roof, roof, face, face];
-    })])),
     tankGeo: new THREE.CylinderGeometry(0.55, 0.55, 1.2, 10).translate(0, 0.6, 0),
-    tank: standard(0x1c1c1e, { roughness: 0.7 }),
+    // Roof kits (seen only from the opening's drone): a parapet round the roof and a stair cabin.
+    parapetFront: parapetGeometry(BUILDING_DEPTH, SEGMENT_LENGTH * 0.96),
+    parapetBack: parapetGeometry(BUILDING_DEPTH + 2, SEGMENT_LENGTH * 0.96),
+    cabinGeo: new THREE.BoxGeometry(2.6, 2.6, 2.6).translate(0, 1.3, 0),
+    parapets: ['#efe2c4', '#f2c7bd', '#cfe3c6', '#e8e3da', '#c8dbec'].map((c) => standard(c, { roughness: 1 })),
+    cabins: ['#efe2c4', '#f2c7bd', '#e8e3da', '#c8dbec'].map((c) => standard(c, { map: cabinSurface, roughness: 1, flatShading: false })),
+    tank: standard(0xffffff, { map: tankTexture(), roughness: 0.55, flatShading: false }),
     ground: standard(0x8a7a66, { roughness: 1 }),
     panelGeo: new THREE.BoxGeometry(LANE_WIDTH * 0.99, 0.3, SEGMENT_LENGTH).translate(0, -0.15, 0),
     pipeGeo: new THREE.CylinderGeometry(0.16, 0.16, SEGMENT_LENGTH, 8).rotateX(Math.PI / 2),
@@ -380,6 +390,14 @@ export class World {
     });
   }
 
+  // Parapets and stair cabins on the street's roofs, for the drone shot only
+  // (the riding camera never sees a roof).
+  set roofDetail(on) {
+    if (on === this.roofDetailOn) return;
+    this.roofDetailOn = on;
+    for (const seg of this.segments) for (const kit of seg.road.kits) kit.visible = on;
+  }
+
   keepBehind(metres = BEHIND) {
     this.behind = metres;
   }
@@ -398,15 +416,12 @@ export class World {
     if (zone === 'road') {
       for (const building of seg.road.buildings) {
         const front = pick(this.materials.facades);
-        const picture = front.map.image;
-        building.scale.y = picture ? (FRONT_WIDTH * picture.height) / picture.width : 12;
+        building.scale.y = facadeHeight(front);
         building.position.set(building.side * BUILDING_X, FLOOR, 0);
-        const { plainWall } = this.materials;
         const roof = pick(this.materials.roofs);
-        // BoxGeometry faces: +x, -x, +y, -y, +z, -z. The shopfront faces the road.
-        building.material = building.side < 0
-          ? [front, plainWall, roof, plainWall, plainWall, plainWall]
-          : [plainWall, front, roof, plainWall, plainWall, plainWall];
+        // BoxGeometry faces: +x, -x, +y, -y, +z, -z. Painted on every side (the drone sees them all).
+        building.material = [front, front, roof, roof, front, front];
+        building.kit.position.set(building.side * BUILDING_X, FLOOR + building.scale.y, 0);
       }
       const side = Math.random() < 0.5 ? -1 : 1;
       seg.road.lamp.position.x = side * (ROAD_WIDTH / 2 + 0.4);

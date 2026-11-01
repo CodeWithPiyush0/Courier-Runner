@@ -425,6 +425,7 @@ kbd {
 /* Speech bubble, comic-book style: beside the speaker's head with a wedge
    tail pointing at them (cinematic.js places it once per line), or with a
    portrait at the top when the speaker isn't in the picture ("call"). */
+body.paused #bubble, body.paused #caption, body.paused #skip { visibility: hidden !important; }
 #bubble {
   --ink: #111;
   position: absolute;

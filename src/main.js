@@ -166,6 +166,7 @@ const targetColor = new THREE.Color();
 // menu | cinematic | running | paused | arriving | results | dead
 let state = 'menu';
 let level = null; // the story delivery being played, or null in endless
+let pausedFrom = 'running'; // what the pause card goes back to: running | cinematic
 let city = null; // old Patna round the start of the first delivery, for the drone shot (city.js)
 let deathCause = null; // crash | caught | dark
 let zone = 'road';
@@ -362,8 +363,9 @@ function startEndless() {
   hud.say(pick(START_LINES));
 }
 
+// Start over: the delivery again (from its intro if we were in a cutscene), or a new endless run.
 function retry() {
-  if (level) startLevel(level.id, { intro: false });
+  if (level) startLevel(level.id, { intro: state === 'paused' && pausedFrom === 'cinematic' });
   else startEndless();
 }
 
@@ -387,9 +389,11 @@ function saveCheckpoint() {
   });
 }
 
+// Pause a run or a cutscene (the Chai Break card: Resume / Start over / ...).
 function pause() {
-  if (state !== 'running') return;
-  saveCheckpoint();
+  if (state !== 'running' && state !== 'cinematic') return;
+  pausedFrom = state;
+  if (state === 'running') saveCheckpoint();
   state = 'paused';
   sound.setPaused(true);
   hud.hideDispatch();
@@ -398,19 +402,22 @@ function pause() {
 
 function resume() {
   if (state !== 'paused') return;
-  state = 'running';
+  state = pausedFrom;
+  sound.wake();
   sound.setPaused(false);
   screens.hide();
+  if (state === 'cinematic') cinematic.start(cinematic.index); // replay the line that was cut off
 }
 
-function die(cause) {
+function die(cause, prop) {
   progress.clearCheckpoint(); // a failed delivery starts again from the beginning
   state = 'dead';
   deathCause = cause;
   deadTime = 0;
   player.dead = true;
   tutorial.stop();
-  sound.play({ crash: 'crash', caught: 'whistle', dark: 'powerdown' }[cause], { muffled: inTunnel() });
+  if (cause === 'crash') sound.accident(prop, { muffled: inTunnel() });
+  else sound.play({ caught: 'whistle', dark: 'powerdown' }[cause], { muffled: inTunnel() });
   sound.play('gameover');
   sound.buzz([60, 40, 140]);
   const quips = { crash: CRASH_LINES[zone], caught: CAUGHT_LINES, dark: DARK_LINES };
@@ -514,13 +521,15 @@ function handleHit(item) {
     hud.say(pick(SHIELD_BREAK_LINES));
     return;
   }
-  if (OBSTACLES[item.type].effect === 'crash') return die('crash');
+  if (OBSTACLES[item.type].effect === 'crash') return die('crash', item.object.prop);
   if (chaserActive() && chaser.dangerous) return die('caught');
   hits++;
   player.stumble();
   if (chaserActive()) chaser.alert();
   bursts.spawn(playerPoint(), { color: 0xffc21a, count: 24, speed: 6, size: 0.15, life: 0.5 });
-  sound.play('zap', { muffled: inTunnel() });
+  // Clipped something: a bump for low things, a thwack for banners and barriers, a spark for live wires.
+  const clip = item.object.prop === 'tn-wires' ? 'zap' : item.type === 'high' ? 'thwack' : 'bump';
+  sound.play(clip, { muffled: inTunnel() });
   if (chaserActive()) sound.play('whistle');
   sound.buzz(45);
   hud.flash('#d6246e');
@@ -610,8 +619,15 @@ pauseButton.addEventListener('click', () => {
 window.addEventListener('pointerdown', () => sound.unlock(), { once: true });
 
 // Leaving the tab / app mid-run pauses the game.
+// Switching tab or minimising pauses the game (cutscenes too) and silences
+// everything; back again, the sound returns and the pause card waits.
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) pause();
+  if (document.hidden) {
+    pause();
+    sound.sleep();
+  } else {
+    sound.wake();
+  }
 });
 // Refreshing or closing the page mid-delivery keeps a checkpoint to resume from.
 window.addEventListener('pagehide', () => saveCheckpoint());
@@ -747,6 +763,7 @@ function frame(timestamp) {
   timer.update(timestamp);
   const rawDt = timer.getDelta();
   const dt = Math.min(rawDt, 1 / 30);
+  document.body.classList.toggle('paused', state === 'paused'); // hides a cutscene's bubble and Skip under the pause card
 
   if (state === 'running') {
     runFrame(dt);
@@ -774,6 +791,7 @@ function frame(timestamp) {
   if (state !== 'paused') {
     applyAtmosphere(cinematic.wide ? 1 : Math.min(1, dt * 2.5)); // the drone shot starts clear
     world.update(dt, player.z);
+    world.roofDetail = cinematic.wide; // the street's parapets and stair cabins, for the drone
     if (cinematic.wide) world.skyline.visible = false; // from the sky the skyline band shows as a flat wall; the haze makes the horizon
     if (city && player.z < city.endZ) { // ridden out of the old city
       city.dispose();

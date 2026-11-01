@@ -42,6 +42,7 @@ export class Cinematic {
     this.camera = camera;
     this.scene = scene;
     this.voice = voice;
+    this.take = 0;
     this.stage = stage;
     this.el = document.getElementById('cinematic');
     this.bubble = document.getElementById('bubble');
@@ -88,6 +89,7 @@ export class Cinematic {
 
   start(index) {
     this.index = index;
+    const take = ++this.take; // a replayed line (after a pause) ignores the old take's voice
     const beat = this.beats[index];
     if (!beat) return this.finish();
     this.time = 0;
@@ -121,7 +123,7 @@ export class Cinematic {
       this.bubbleShown = false;
       const recorded = this.voice.has(beat.line.text);
       this.voice.play(beat.line.text).then(() => {
-        if (this.beats[this.index] !== beat) return;
+        if (this.take !== take) return;
         this.lineDone = true;
         this.lineEndedAt = recorded ? this.time : this.length; // no recording: give reading time
       });

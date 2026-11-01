@@ -74,6 +74,23 @@ export class Sound {
     this.voiceBus.gain.setTargetAtTime(settings.get('voice'), t, 0.05);
   }
 
+  // The tab is hidden or the window minimised: silence everything at once
+  // (music, effects, voices); wake() brings the sound back.
+  sleep() {
+    if (!this.ctx) return;
+    this.sleeping = Object.values(this.tracks).filter((t) => !t.el.paused);
+    for (const t of this.sleeping) t.el.pause();
+    this.stopVoice();
+    this.ctx.suspend();
+  }
+
+  wake() {
+    if (!this.ctx) return;
+    this.ctx.resume();
+    for (const t of this.sleeping ?? []) t.el.play().catch(() => {});
+    this.sleeping = [];
+  }
+
   setPaused(paused) {
     this.pauseDuck = paused ? PAUSE_DUCK : 1;
     if (paused) this.stopVoice();
@@ -253,6 +270,89 @@ export class Sound {
     source.stop(start + duration + 0.05);
   }
 
+  // A cartoon spring "boing" (bumps and knocks).
+  boing(delay = 0) {
+    const ctx = this.ctx;
+    const start = ctx.currentTime + delay;
+    const osc = ctx.createOscillator();
+    const wobble = ctx.createOscillator();
+    const depth = ctx.createGain();
+    wobble.frequency.value = 22;
+    depth.gain.setValueAtTime(90, start);
+    depth.gain.exponentialRampToValueAtTime(5, start + 0.4);
+    wobble.connect(depth).connect(osc.frequency);
+    osc.frequency.setValueAtTime(300, start);
+    osc.frequency.exponentialRampToValueAtTime(480, start + 0.4);
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.0001, start);
+    env.gain.exponentialRampToValueAtTime(0.12, start + 0.01);
+    env.gain.exponentialRampToValueAtTime(0.0001, start + 0.42);
+    osc.connect(env).connect(this.sfxBus);
+    for (const o of [osc, wobble]) { o.start(start); o.stop(start + 0.45); }
+  }
+
+  // An accident, by what Bholu hit: tyres screech first, then the impact.
+  // `prop` is the obstacle's picture name (ob-cow, ob-truck, ...).
+  accident(prop = '', { muffled = false } = {}) {
+    if (!this.ctx || settings.get('muted')) return;
+    const muffle = muffled ? 1800 : 0;
+    // The screech: a squealing band of noise and a whining tone.
+    this.noise({ filter: 'bandpass', from: 2600, to: 1900, duration: 0.42, volume: 0.22, q: 6 });
+    this.tone({ type: 'sawtooth', from: 2300, to: 1700, duration: 0.4, volume: 0.04, lowpass: 4000 });
+    const at = 0.36; // the bang lands as the screech ends
+    if (prop === 'ob-cow') {
+      this.tone({ from: 150, to: 55, duration: 0.35, volume: 0.42, delay: at, lowpass: muffle });
+      this.noise({ filter: 'lowpass', from: 900, to: 150, duration: 0.25, volume: 0.25, delay: at });
+      this.moo(at + 0.35);
+    } else if (prop === 'ob-barricade' || prop === 'ob-boom') {
+      this.impact('metal', { muffle, delay: at });
+      [523, 1347, 2211, 3120].forEach((f) => this.tone({ from: f, duration: 0.9, volume: 0.05, delay: at })); // the clang rings on
+    } else if (prop === 'ob-cart' || prop === 'tn-junk' || prop === 'ob-bricks') {
+      this.impact('wood', { muffle, delay: at });
+    } else {
+      this.impact('metal', { muffle, delay: at }); // a vehicle: crunch, glass, and its horn stuck on
+      for (let i = 0; i < 9; i++) this.tone({ from: 3000 + Math.random() * 4500, duration: 0.12, volume: 0.04, delay: at + 0.08 + Math.random() * 0.4 });
+      if (!muffled) this.play('horn-truck', { pan: 0.3 });
+    }
+  }
+
+  // A crash: a low thump plus metal crunch (or a wooden clatter).
+  impact(kind, { light = false, muffle = 0, delay = 0 } = {}) {
+    const loud = light ? 0.5 : 1;
+    this.tone({ from: 130, to: 35, duration: 0.6, volume: 0.45 * loud, delay, lowpass: muffle });
+    this.noise({ filter: 'lowpass', from: muffle || 3200, to: 90, duration: 0.7, volume: 0.45 * loud, delay });
+    if (kind === 'metal') {
+      [410, 690, 1170, 1730].forEach((f, i) => this.tone({ type: 'square', from: f, to: f * 0.8, duration: 0.25, volume: 0.03 * loud, delay: delay + i * 0.03, lowpass: 3000 }));
+    } else {
+      for (let i = 0; i < 7; i++) this.noise({ filter: 'bandpass', from: 700 + Math.random() * 1200, duration: 0.07, volume: 0.15 * loud, delay: delay + 0.05 + i * (0.04 + Math.random() * 0.05), q: 3 });
+    }
+  }
+
+  // An indignant cow.
+  moo(delay = 0) {
+    const ctx = this.ctx;
+    const start = ctx.currentTime + delay;
+    const osc = ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(140, start);
+    osc.frequency.linearRampToValueAtTime(190, start + 0.25);
+    osc.frequency.linearRampToValueAtTime(115, start + 1);
+    const formant = ctx.createBiquadFilter();
+    formant.type = 'bandpass';
+    formant.frequency.setValueAtTime(500, start);
+    formant.frequency.linearRampToValueAtTime(800, start + 0.3);
+    formant.frequency.linearRampToValueAtTime(420, start + 1);
+    formant.Q.value = 2;
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.0001, start);
+    env.gain.exponentialRampToValueAtTime(0.35, start + 0.12);
+    env.gain.setValueAtTime(0.3, start + 0.8);
+    env.gain.exponentialRampToValueAtTime(0.0001, start + 1.05);
+    osc.connect(formant).connect(env).connect(this.sfxBus);
+    osc.start(start);
+    osc.stop(start + 1.1);
+  }
+
   // Play a named effect. `muffled` dulls things in a tunnel;
   // `step` raises the pitch (coin streaks).
   // `pan` places street sounds left or right.
@@ -329,12 +429,8 @@ export class Sound {
         for (let i = 0; i < 5; i++) this.tone({ from: 1800 + Math.random() * 2400, duration: 0.25, volume: 0.08, delay: i * 0.02 });
         this.noise({ filter: 'highpass', from: 4000, to: 2000, duration: 0.2, volume: 0.15 });
         break;
-      case 'smash':
-        this.noise({ filter: 'lowpass', from: 2500, to: 200, duration: 0.3, volume: 0.3 });
-        break;
-      case 'crash':
-        this.noise({ filter: 'lowpass', from: muffle || 3000, to: 80, duration: 0.7, volume: 0.5 });
-        this.tone({ from: 130, to: 35, duration: 0.6, volume: 0.45 });
+      case 'smash': // ploughing through something (helmet, chai boost)
+        this.impact('metal', { light: true, muffle });
         break;
       case 'whistle': // Mamu's police whistle: a trilled two-tone blast
         for (let i = 0; i < 6; i++) {
@@ -355,6 +451,16 @@ export class Sound {
       case 'lowBattery':
         this.tone({ type: 'square', from: 880, duration: 0.07, volume: 0.07 });
         this.tone({ type: 'square', from: 880, duration: 0.07, volume: 0.07, delay: 0.12 });
+        break;
+      case 'bump': // clipped something low: a thud and a cartoon boing
+        this.tone({ from: 170, to: 60, duration: 0.22, volume: 0.32, lowpass: muffle });
+        this.noise({ filter: 'lowpass', from: 1200, to: 200, duration: 0.16, volume: 0.18 });
+        this.boing(0.06);
+        break;
+      case 'thwack': // ducked too late into a banner or a boom barrier
+        this.noise({ filter: 'bandpass', from: 900, to: 400, duration: 0.18, volume: 0.32, q: 0.8 });
+        this.tone({ type: 'triangle', from: 240, to: 120, duration: 0.18, volume: 0.2 });
+        this.boing(0.08);
         break;
       case 'gameover':
         [523, 392, 330, 262].forEach((f, i) => this.tone({ type: 'triangle', from: f, duration: 0.3, volume: 0.18, delay: i * 0.15 }));

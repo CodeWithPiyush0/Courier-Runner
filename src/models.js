@@ -101,7 +101,9 @@ function spriteProp(name, { width, copies = 1, top = null, tunnel = false }) {
 // Pick one of several props (name, options) for a type of obstacle.
 const sprites = (choices, extra = {}) => () => {
   const [name, options] = pick(choices);
-  return spriteProp(name, { ...options, ...extra });
+  const prop = spriteProp(name, { ...options, ...extra });
+  prop.prop = name; // what it is (crash sounds depend on it)
+  return prop;
 };
 
 const ROAD = ROAD_LANE_WIDTH;

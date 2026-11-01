@@ -198,7 +198,7 @@ export class Screens {
       <h2>Chai Break</h2>
       <div class="buttons">
         <button class="primary" data-action="resume">Resume</button>
-        <button data-action="retry">Restart</button>
+        <button data-action="retry">Start over</button>
         <button data-action="settings">Settings</button>
         <button class="ghost" data-action="menu">Main menu</button>
       </div>`, {
