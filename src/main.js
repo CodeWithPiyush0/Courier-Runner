@@ -53,6 +53,7 @@ const ATMOSPHERE = {
   tunnel: { color: 0x0b0a09, near: 4, far: 70, ambient: 0x6a5f50, ambientIntensity: 0.35, sun: 0.05, torch: 70 },
 };
 const WIDE_FAR = 650; // fog distance during the opening drone shot
+const WIDE_LIGHT = { ambient: 0.45, sun: 2.3 }; // and its lighting
 const DARK_FAR = 16; // fog distance in a tunnel when the torch is almost dead
 const INTRO_BEHIND = 55; // metres of street kept behind Bholu during an intro (the opening glide starts 46 m back)
 const EXIT_SETTLE = 40; // metres before a tunnel exit when Bholu steers back to the floor
@@ -213,8 +214,12 @@ function applyAtmosphere(t) {
   scene.fog.far += (far - scene.fog.far) * t;
   torch.intensity += (target.torch * (0.25 + 0.75 * battery) - torch.intensity) * t;
   ambient.color.lerp(targetColor.set(target.ambient), t);
-  ambient.intensity += (target.ambientIntensity - ambient.intensity) * t;
-  sun.intensity += (target.sun - sun.intensity) * t;
+  // The drone shot gets outdoor contrast: a strong sun and soft fill, so the
+  // houses' shapes and shadows read (gameplay keeps its bright, even light).
+  const ambientIntensity = cinematic.wide ? WIDE_LIGHT.ambient : target.ambientIntensity;
+  const sunIntensity = cinematic.wide ? WIDE_LIGHT.sun : target.sun;
+  ambient.intensity += (ambientIntensity - ambient.intensity) * t;
+  sun.intensity += (sunIntensity - sun.intensity) * t;
 }
 
 function setZone(next) {
@@ -306,6 +311,7 @@ async function startLevel(id, { intro = true, resumeAt = null } = {}) {
   if (level.id === 1) { // the drone opening flies over old Patna
     const [streetTo, streetFrom] = world.span;
     city = new City(scene, player.z, streetFrom, streetTo);
+    city.light(sun);
   }
   state = 'cinematic';
   cinematic.play(introBeats(level), {
@@ -783,11 +789,12 @@ function frame(timestamp) {
   requestAnimationFrame(frame);
 }
 
-// Dev mode (?dev=1, or `npm run dev`): the dev panel (dev.js) plus `game` in
+// Dev mode (only with ?dev=1 in the address bar): the dev panel (dev.js) plus `game` in
 // the browser console, e.g. game.skipToZone() puts the next zone gate 40 m ahead.
 if (DEV) {
   window.game = {
-    player, track, chaser, powers, zones, voice, sound, settings, progress, cinematic, tutorial, stage,
+    player, track, chaser, powers, zones, voice, sound, settings, progress, cinematic, tutorial, stage, renderer, scene, sun,
+    get city() { return city; },
     collectPower, startLevel, startEndless,
     get state() { return state; },
     get zone() { return zone; },

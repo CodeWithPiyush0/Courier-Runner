@@ -14,21 +14,24 @@ export const STAGE_SHOTS = {
   munni: { bg: 'plate-haat', cast: [{ img: 'cut-bholu-wave', side: 'left' }, { img: 'cut-munni', side: 'right' }], move: 'truck-right', caption: 'Delivered · Munni didi, Hajipur haat' },
   dispatch: { bg: 'bg-office', cast: [{ img: 'cut-mishra', side: 'right' }], move: 'truck-left', caption: 'DesiDash Couriers · Patna office' },
   'dispatch-close': { bg: 'bg-office', cast: [{ img: 'cut-mishra', side: 'centre' }], move: 'push-fast' },
-  shop: { bg: 'bg-radio-shop', cast: [{ img: 'cut-bholu-talk', side: 'left' }], move: 'truck-right', caption: 'Laxmi Radio Repair · Ashok Rajpath' },
+  nap: { bg: 'plate-bholu-nap', move: 'push', caption: 'Laxmi Radio Repair · Ashok Rajpath' }, // Mishra ji calls; Bholu dozes
+  shop: { bg: 'bg-radio-shop', cast: [{ img: 'cut-bholu-phone', side: 'left' }], move: 'push-fast' }, // jolted awake
   parcel: { bg: 'plate-radio', move: 'push' },
-  'street-grin': { bg: 'bg-patna-street', cast: [{ img: 'cut-bholu-grin', side: 'left' }], move: 'rise' },
+  'street-scooter': { bg: 'bg-patna-street', cast: [{ img: 'cut-bholu-scooter', side: 'left' }], move: 'rise' },
+  'setu-scooter': { bg: 'plate-setu', cast: [{ img: 'cut-bholu-scooter', side: 'left' }], move: 'rise' },
+  'orchard-scooter': { bg: 'bg-orchard', cast: [{ img: 'cut-bholu-scooter', side: 'left' }], move: 'rise', caption: 'Muzaffarpur · the litchi orchards' },
   'street-shock': { bg: 'bg-patna-street', cast: [{ img: 'cut-bholu-shock', side: 'left' }], move: 'push-fast' },
-  mamu: { bg: 'bg-patna-street', cast: [{ img: 'cut-mamu', side: 'right' }], move: 'push', flicker: true },
+  mamu: { bg: 'bg-patna-street', cast: [{ img: 'cut-mamu-bike', side: 'right' }], move: 'push', flicker: true },
+  'mamu-haat': { bg: 'plate-haat', cast: [{ img: 'cut-mamu-bike', side: 'right' }], move: 'push', flicker: true },
   setu: { bg: 'plate-setu', move: 'truck-left', caption: 'Mahatma Gandhi Setu · over the Ganga' },
   haat: { bg: 'plate-haat', move: 'truck-right', caption: 'Hajipur · banana market' },
   nani: { bg: 'bg-courtyard', cast: [{ img: 'cut-nani', side: 'right' }], move: 'truck-left', caption: 'Muzaffarpur · Nani ka ghar' },
-  'orchard-grin': { bg: 'bg-orchard', cast: [{ img: 'cut-bholu-grin', side: 'left' }], move: 'rise', caption: 'Muzaffarpur · the litchi orchards' },
-  doorstep: { bg: 'bg-courtyard', cast: [{ img: 'cut-bholu-grin', side: 'left' }, { img: 'cut-nani', side: 'right' }], move: 'push', caption: 'Nani ka ghar · Delivery point' },
+  doorstep: { bg: 'bg-courtyard', cast: [{ img: 'cut-bholu-give', side: 'left' }, { img: 'cut-nani-welcome', side: 'right' }], move: 'push', caption: 'Nani ka ghar · Delivery point' },
   reveal: { bg: 'bg-courtyard', cast: [{ img: 'cut-bholu-shock', side: 'left' }, { img: 'cut-mamu', side: 'right' }], move: 'push-fast' },
   'yard-shock': { bg: 'bg-courtyard', cast: [{ img: 'cut-bholu-shock', side: 'left' }], move: 'push-fast' },
   'mamu-laugh': { bg: 'bg-courtyard', cast: [{ img: 'cut-mamu-laugh', side: 'right' }], move: 'truck-left' },
-  'radio-party': { bg: 'bg-courtyard', cast: [{ img: 'cut-nani', side: 'left' }, { img: 'cut-mamu-laugh', side: 'right' }], move: 'drift' },
-  litchi: { bg: 'bg-orchard', cast: [{ img: 'cut-bholu-grin', side: 'left' }, { img: 'cut-mamu-laugh', side: 'right' }], move: 'push' },
+  'radio-party': { bg: 'bg-courtyard', cast: [{ img: 'cut-nani-radio', side: 'left' }, { img: 'cut-mamu-laugh', side: 'right' }], move: 'drift' },
+  litchi: { bg: 'bg-orchard', cast: [{ img: 'cut-bholu-grin', side: 'left' }, { img: 'cut-mamu-litchi', side: 'right' }], move: 'push' },
   'yard-wave': { bg: 'bg-courtyard', cast: [{ img: 'cut-bholu-wave', side: 'centre' }], move: 'push' },
 };
 
@@ -76,8 +79,8 @@ export function introBeats(level) {
     // sprite is only ever seen from behind.
     beats.push({
       shot: SHOTS.path({
-        points: [[0, 74, 95], [0, 52, 62], [0, 26, 40], [0, 9, 22], [0, 3.2, 9]],
-        looks: [[0, -10, -150], [0, -6, -110], [0, -2, -70], [0, 1, -30], [0, 1.3, -3]],
+        points: [[0, 46, 80], [0, 33, 58], [0, 18, 38], [0, 7.5, 21], [0, 3.2, 9]],
+        looks: [[0, 0, -120], [0, 1, -90], [0, 2, -60], [0, 2, -28], [0, 1.3, -3]],
       }),
       duration: 7, wide: true, caption: PROLOGUE_CAPTION,
     });

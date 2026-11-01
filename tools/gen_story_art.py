@@ -78,6 +78,15 @@ ASSETS = {
     "cut-mamu-laugh": ("story", "3:4", "cutout", ["story/cut-mamu"], f"{CUTOUT} The same policeman as the reference, helmet off under his arm and sunglasses pushed up, laughing warmly: a kind uncle."),
     "portrait-mamu": (".", "1:1", "portrait", ["story/cut-mamu"], f"Head-and-shoulders portrait of the traffic policeman in the reference, stern but secretly kind, background a softly blurred Patna street at golden hour. {REAL}"),
 
+    # --- more poses and scenes (drawn by tools/gen_cast.py; listed here for import_art)
+    "cut-bholu-phone": ("story", "3:4", "cutout", [], f"{CUTOUT} Bholu on the phone."),
+    "cut-bholu-scooter": ("story", "3:4", "cutout", [], f"{CUTOUT} Bholu on his scooter, front view."),
+    "cut-bholu-give": ("story", "3:4", "cutout", [], f"{CUTOUT} Bholu holding out a parcel."),
+    "cut-nani-welcome": ("story", "3:4", "cutout", [], f"{CUTOUT} Nani, arms open in welcome."),
+    "cut-nani-radio": ("story", "3:4", "cutout", [], f"{CUTOUT} Nani hugging her radio."),
+    "cut-mamu-bike": ("story", "3:4", "cutout", [], f"{CUTOUT} Mamu on his bike, front view."),
+    "cut-mamu-litchi": ("story", "3:4", "cutout", [], f"{CUTOUT} Mamu with a basket of litchis."),
+    "plate-bholu-nap": ("story", "16:9", "plate", [], f"{WIDE} Bholu asleep on a chair outside the radio shop. {REAL}"),
     # --- customers (drawn by tools/gen_cast.py; listed here for import_art)
     "cut-pappu": ("story", "3:4", "cutout", [], f"{CUTOUT} Pappu, a skinny, cheerful coaching-centre student."),
     "cut-aunty": ("story", "3:4", "cutout", [], f"{CUTOUT} Gupta Aunty, a plump, chatty Patna housewife."),

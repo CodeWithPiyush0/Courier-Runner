@@ -37,7 +37,7 @@ export const LEVELS = [
     powers: false,
     tutorial: 'basics',
     intro: [
-      { who: 'dispatch', shot: 'dispatch', text: "Bholu! Bholu! Are you awake? An urgent parcel just came in." },
+      { who: 'dispatch', shot: 'nap', text: "Bholu! Bholu! Are you awake? An urgent parcel just came in." },
       { who: 'bholu', shot: 'shop', text: "Ka ho, Mishra ji! Always awake. What's the parcel?" },
       { who: 'dispatch', shot: 'dispatch-close', text: "Pickup from Laxmi Radio Repair, Patna. Drop at... 'Nani, Litchi Bagan, Muzaffarpur'." },
       { who: 'bholu', shot: 'parcel', text: "Arre, that's my Nani! Wait... why is this box humming?" },
@@ -46,7 +46,7 @@ export const LEVELS = [
     outro: [
       { who: 'pappu', shot: 'pappu', text: "Bholu bhaiya! My GK book, just in time. Exam is tomorrow!" },
       { who: 'bholu', shot: 'pappu', text: "All the best, Pappu! Question one: who is Patna's fastest delivery boy?" },
-      { who: 'bholu', shot: 'street-grin', text: "Old city done! Patna traffic is no match for me." },
+      { who: 'bholu', shot: 'street-scooter', text: "Old city done! Patna traffic is no match for me." },
       { who: 'dispatch', shot: 'dispatch-close', text: "Don't celebrate yet. A traffic police Mamu saw you jump that signal." },
     ],
   },
@@ -69,7 +69,7 @@ export const LEVELS = [
       { who: 'aunty', shot: 'aunty', text: "Arre Bholu, my new pressure cooker! Sit, have one litti before you go." },
       { who: 'bholu', shot: 'aunty', text: "Next time, aunty! A traffic police Mamu is chasing me today." },
       { who: 'dispatch', shot: 'dispatch', text: "You lost him! But Gandhi Setu is jammed for ten kilometres." },
-      { who: 'bholu', shot: 'street-grin', text: "Ten kilometres? Then I'm taking the tunnel under the bridge!" },
+      { who: 'bholu', shot: 'setu-scooter', text: "Ten kilometres? Then I'm taking the tunnel under the bridge!" },
     ],
   },
   {
@@ -83,14 +83,14 @@ export const LEVELS = [
     tutorial: 'tunnel',
     intro: [
       { who: 'dispatch', shot: 'setu', text: "Gandhi Setu. Five kilometres over the Ganga, and fifty thousand trucks." },
-      { who: 'bholu', shot: 'street-grin', text: "There's a service tunnel under the bridge. Dark, but empty." },
+      { who: 'bholu', shot: 'setu-scooter', text: "There's a service tunnel under the bridge. Dark, but empty." },
       { who: 'dispatch', shot: 'dispatch', text: "Keep your phone torch on. And don't drop Nani's radio in the Ganga!" },
     ],
     outro: [
       { who: 'ramesh', shot: 'ramesh', text: "My charger! Three hours in this jam, bhai, and my phone was dead." },
       { who: 'bholu', shot: 'ramesh', text: "Charge it full, Ramesh bhai. This jam is not going anywhere." },
       { who: 'bholu', shot: 'haat', text: "Hajipur! I can smell the bananas already." },
-      { who: 'mamu', shot: 'mamu', text: "I can still see you, scooter wale! Hajipur mein bhi pakad lenge!" },
+      { who: 'mamu', shot: 'mamu-haat', text: "I can still see you, scooter wale! Hajipur mein bhi pakad lenge!" },
     ],
   },
   {
@@ -123,7 +123,7 @@ export const LEVELS = [
     finale: true,
     intro: [
       { who: 'nani', shot: 'nani', text: "Bholu beta! The whole family is coming for my birthday. Where is my radio?" },
-      { who: 'bholu', shot: 'orchard-grin', text: "Almost there, Nani! Just one small problem. A traffic police Mamu." },
+      { who: 'bholu', shot: 'orchard-scooter', text: "Almost there, Nani! Just one small problem. A traffic police Mamu." },
     ],
     outro: [],
   },

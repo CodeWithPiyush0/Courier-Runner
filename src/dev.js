@@ -1,10 +1,10 @@
-// Dev mode: open the game with ?dev=1 (always on under `npm run dev`) to test
+// Dev mode: open the game with ?dev=1 in the address bar (and only then) to test
 // the whole thing without dying or replaying. A small panel at the top lets
 // you turn invincibility on/off, jump to the next zone or the drop-off, start
 // any delivery (with its intro) or the ending, skip a cutscene and speed time
 // up. It never changes saved progress.
 
-export const DEV = import.meta.env.DEV || new URLSearchParams(window.location.search).get('dev') === '1';
+export const DEV = new URLSearchParams(window.location.search).get('dev') === '1';
 
 export const dev = { invincible: DEV, speed: 1 };
 
