@@ -17,6 +17,16 @@ export const SHOTS = {
     const at = (v) => new THREE.Vector3(a.x + v[0], a.y + v[1], a.z + v[2]);
     return { pos: at(from).lerp(at(to), e), look: at(lookFrom).lerp(at(lookTo), e) };
   },
+  // A smooth flight through several points, looking along several targets.
+  path: ({ points, looks }) => {
+    const v = (p) => new THREE.Vector3(...p);
+    const route = new THREE.CatmullRomCurve3(points.map(v));
+    const aim = new THREE.CatmullRomCurve3(looks.map(v));
+    return (t, a) => {
+      const e = ease(t);
+      return { pos: route.getPoint(e).add(a), look: aim.getPoint(e).add(a) };
+    };
+  },
 };
 
 // How long a line takes to say, roughly (used when there's no recording, and
@@ -24,7 +34,7 @@ export const SHOTS = {
 const estimate = (text) => Math.max(2.4, text.length * 0.066 + 0.9);
 
 // Plays a cutscene: a list of beats. A beat is either a 3D shot of the game
-// world ({ shot, duration, pose }) or a 2.5D stage shot ({ stage }),
+// world ({ shot, duration, pose, wide }) or a 2.5D stage shot ({ stage }),
 // optionally with a voiced line, a caption and a delivery title card. Lines stay
 // up until their voice has finished. Tap / Space = next, Skip / Esc = skip all.
 export class Cinematic {
@@ -47,6 +57,8 @@ export class Cinematic {
 
   // True while the current beat is a 2.5D stage shot (main renders the stage then).
   get onStage() { return this.active && Boolean(this.beats[this.index]?.stage); }
+  // True during a wide aerial shot (main pushes the fog back so the city shows).
+  get wide() { return this.active && Boolean(this.beats[this.index]?.wide); }
 
   // anchor: () => Vector3 floor point under Bholu. player: for his pose.
   // inTunnel: () => whether he's in a tunnel (the camera then stays inside it).
@@ -101,8 +113,9 @@ export class Cinematic {
         <img src="${who.portrait}" alt="" onerror="this.src='/art/emblem.webp'">
         <div><b>${who.name}</b><span>${beat.line.text}</span></div>`;
       this.bubble.className = 'call';
-      this.bubble.style.visibility = 'hidden'; // placed (and shown) on the next update
-      this.bubblePlaced = false;
+      this.bubble.style.visibility = 'hidden'; // laid out (and shown) on the next update
+      this.bubbleLayout = null;
+      this.bubbleShown = false;
       const recorded = this.voice.has(beat.line.text);
       this.voice.play(beat.line.text).then(() => {
         if (this.beats[this.index] !== beat) return;
@@ -114,48 +127,68 @@ export class Cinematic {
     }
   }
 
-  // Put the speech bubble beside the speaker's face, tail pointing at them.
-  // A speaker who isn't in the picture talks from a portrait bubble at the top.
-  placeBubble(beat) {
-    if (beat.stage && !this.stage.ready) return; // wait for the picture, so it doesn't jump
+  // The speech bubble: beside the speaker's face on the open side of the
+  // picture (never over a face), above or below the head for a lone figure on
+  // a tall screen, or with a portrait at the top when the speaker isn't in the
+  // picture. Its shape is decided once per line; after that it glides after
+  // the face as the camera moves, eased, so it never jiggles.
+  placeBubble(beat, dt) {
+    if (beat.stage && !this.stage.ready) return; // wait for the picture
     const b = this.bubble;
-    const anchor = beat.stage ? this.stage.speakerAnchor() : null;
     const W = window.innerWidth;
     const H = window.innerHeight;
     const margin = 12;
-    const top = 56; // clear of the caption and the Skip button
+    const top = 62; // clear of the caption, the Skip button and the bubble's name tag
+    const gap = 22; // between the face and the bubble's tail
+    const anchor = beat.stage ? this.stage.speakerAnchor() : null;
     const portrait = b.querySelector('img');
-    if (!anchor) {
-      b.className = 'call';
-      if (portrait) portrait.hidden = false;
-      b.style.setProperty('--bubble-width', `min(520px, ${W - margin * 2}px)`);
-      b.style.left = `${(W - b.offsetWidth) / 2}px`;
-      b.style.top = `${top}px`;
-    } else if (anchor.side === 'centre') { // above the head (phones, single shots)
-      if (portrait) portrait.hidden = true;
-      b.style.setProperty('--bubble-width', `min(460px, ${W - margin * 2}px)`);
-      const left = Math.min(Math.max(anchor.x - b.offsetWidth / 2, margin), W - b.offsetWidth - margin);
-      const y = Math.max(top, anchor.y - H * 0.13 - b.offsetHeight);
-      b.className = 'tail-down';
-      b.style.left = `${left}px`;
-      b.style.top = `${y}px`;
-      b.style.setProperty('--tail', `${Math.min(Math.max(anchor.x - left, 26), b.offsetWidth - 26)}px`);
-    } else { // beside the head, on the open side of the picture
-      if (portrait) portrait.hidden = true;
-      b.style.setProperty('--bubble-width', `min(400px, ${W * 0.4}px)`);
-      const gap = W * 0.07;
-      const left = anchor.side === 'left'
-        ? Math.min(anchor.x + gap, W - b.offsetWidth - margin)
-        : Math.max(anchor.x - gap - b.offsetWidth, margin);
-      const y = Math.min(Math.max(anchor.y - 30, top), H - b.offsetHeight - margin);
-      b.className = anchor.side === 'left' ? 'tail-left' : 'tail-right';
-      b.style.left = `${left}px`;
-      b.style.top = `${y}px`;
-      b.style.setProperty('--tail', `${Math.min(Math.max(anchor.y - y - 11, 14), b.offsetHeight - 30)}px`);
+
+    if (!this.bubbleLayout) { // first frame of the line: choose the shape and size
+      let mode = 'call';
+      if (anchor?.side === 'left' || anchor?.side === 'right') mode = anchor.side;
+      else if (anchor) mode = 'above';
+      if (portrait) portrait.hidden = mode !== 'call';
+      let width = Math.min(520, W - margin * 2);
+      if (mode === 'left') width = Math.min(400, anchor.reach - anchor.face.right - gap - margin * 2);
+      if (mode === 'right') width = Math.min(400, anchor.face.left - anchor.reach - gap - margin * 2);
+      if (mode === 'above') width = Math.min(460, W - margin * 2);
+      b.style.setProperty('--bubble-width', `${Math.max(180, width)}px`);
+      if (mode === 'above' && anchor.face.top - gap - top < b.offsetHeight) mode = 'below'; // no room over the head
+      b.className = { call: 'call', left: 'tail-left', right: 'tail-right', above: 'tail-down', below: 'tail-up' }[mode];
+      this.bubbleLayout = { mode, w: b.offsetWidth, h: b.offsetHeight };
     }
-    if (!this.bubblePlaced) {
-      this.bubblePlaced = true;
+
+    const { mode, w, h } = this.bubbleLayout;
+    let x = (W - w) / 2;
+    let y = top;
+    let tail = 0;
+    if (mode === 'left' || mode === 'right') {
+      x = mode === 'left' ? anchor.face.right + gap : anchor.face.left - gap - w;
+      y = anchor.face.top;
+      tail = anchor.face.y - y - 10;
+    } else if (mode === 'above' || mode === 'below') {
+      x = anchor.face.x - w / 2;
+      y = mode === 'above' ? anchor.face.top - gap - h : anchor.face.bottom + gap;
+      tail = anchor.face.x;
+    }
+    x = Math.min(Math.max(x, margin), W - w - margin);
+    y = Math.min(Math.max(y, top), H - h - margin);
+
+    const ease = 1 - Math.exp(-dt * 5); // glide, don't snap
+    if (this.bubbleShown) {
+      this.bubblePos.x += (x - this.bubblePos.x) * ease;
+      this.bubblePos.y += (y - this.bubblePos.y) * ease;
+    } else {
+      this.bubblePos = { x, y };
+      this.bubbleShown = true;
       b.style.visibility = '';
+    }
+    b.style.left = `${this.bubblePos.x}px`;
+    b.style.top = `${this.bubblePos.y}px`;
+    if (mode === 'left' || mode === 'right') {
+      b.style.setProperty('--tail', `${Math.min(Math.max(tail + y - this.bubblePos.y, 14), h - 30)}px`);
+    } else if (mode !== 'call') {
+      b.style.setProperty('--tail', `${Math.min(Math.max(tail - this.bubblePos.x, 26), w - 26)}px`);
     }
   }
 
@@ -176,7 +209,7 @@ export class Cinematic {
     const beat = this.beats[this.index];
     const progress = Math.min(1, this.time / this.length);
 
-    if (beat.line) this.placeBubble(beat);
+    if (beat.line) this.placeBubble(beat, dt);
     if (beat.stage) {
       this.stage.update(dt, progress);
     } else {

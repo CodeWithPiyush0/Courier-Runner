@@ -12,6 +12,8 @@ import { progress } from './progress.js';
 import { LEVELS, ENDING } from './story.js';
 import { ZonePlan } from './zones.js';
 import { World } from './world.js';
+import { City } from './city.js';
+import { DEV, dev, devPanel } from './dev.js';
 import { Player } from './player.js';
 import { Track, OBSTACLES } from './track.js';
 import { Chaser } from './chaser.js';
@@ -50,6 +52,7 @@ const ATMOSPHERE = {
   road: { color: 0xd9e8ef, near: 35, far: 170, ambient: 0xffffff, ambientIntensity: 1.0, sun: 1.3, torch: 0 },
   tunnel: { color: 0x0b0a09, near: 4, far: 70, ambient: 0x6a5f50, ambientIntensity: 0.35, sun: 0.05, torch: 70 },
 };
+const WIDE_FAR = 650; // fog distance during the opening drone shot
 const DARK_FAR = 16; // fog distance in a tunnel when the torch is almost dead
 const INTRO_BEHIND = 55; // metres of street kept behind Bholu during an intro (the opening glide starts 46 m back)
 const EXIT_SETTLE = 40; // metres before a tunnel exit when Bholu steers back to the floor
@@ -161,6 +164,7 @@ const targetColor = new THREE.Color();
 // menu | cinematic | running | paused | arriving | results | dead
 let state = 'menu';
 let level = null; // the story delivery being played, or null in endless
+let city = null; // old Patna round the start of the first delivery, for the drone shot (city.js)
 let deathCause = null; // crash | caught | dark
 let zone = 'road';
 let zoneSpeed = 1;
@@ -198,9 +202,14 @@ const routeLength = () => (level ? level.zones.reduce((sum, [, m]) => sum + m, 0
 // Ease fog, background and lights towards the current zone (t = 1 snaps).
 function applyAtmosphere(t) {
   const target = ATMOSPHERE[zone];
-  const far = inTunnel() ? DARK_FAR + (target.far - DARK_FAR) * battery : target.far;
+  let far = inTunnel() ? DARK_FAR + (target.far - DARK_FAR) * battery : target.far;
+  let near = target.near;
+  if (cinematic.wide) { // the drone shot: see the whole city
+    far = WIDE_FAR;
+    near = WIDE_FAR * 0.35;
+  }
   scene.fog.color.lerp(targetColor.set(target.color), t);
-  scene.fog.near += (target.near - scene.fog.near) * t;
+  scene.fog.near += (near - scene.fog.near) * t;
   scene.fog.far += (far - scene.fog.far) * t;
   torch.intensity += (target.torch * (0.25 + 0.75 * battery) - torch.intensity) * t;
   ambient.color.lerp(targetColor.set(target.ambient), t);
@@ -218,6 +227,8 @@ function setZone(next) {
 // Reset the world for a fresh run along `route` (null = endless).
 function setupRun(route) {
   cinematic.finish();
+  city?.dispose();
+  city = null;
   tutorial.stop();
   voice.stop(); // nothing from the last run (a game-over quip, a radio line) carries over
   hud.hideDispatch();
@@ -270,7 +281,7 @@ function cutsceneLines(lvl) {
 // slow connection can't block the game: missing bits are just skipped).
 function loadCutscenes(lvl) {
   const lines = cutsceneLines(lvl);
-  const loading = Promise.all([stage.load(picturesFor(lines, lvl)), voice.preload(lines.map((l) => l.text))]);
+  const loading = Promise.all([stage.load(picturesFor(lines)), voice.preload(lines.map((l) => l.text))]);
   return Promise.race([loading, new Promise((resolve) => setTimeout(resolve, LOAD_TIMEOUT))]);
 }
 
@@ -292,6 +303,10 @@ async function startLevel(id, { intro = true, resumeAt = null } = {}) {
   if (!intro) return beginRun();
   if (level.chaser) chaser.chase = 1; // Mamu is right there in the intro
   world.reset(player.z, INTRO_BEHIND); // street behind Bholu for the opening camera moves
+  if (level.id === 1) { // the drone opening flies over old Patna
+    const [streetTo, streetFrom] = world.span;
+    city = new City(scene, player.z, streetFrom, streetTo);
+  }
   state = 'cinematic';
   cinematic.play(introBeats(level), {
     anchor: floorPoint,
@@ -301,6 +316,7 @@ async function startLevel(id, { intro = true, resumeAt = null } = {}) {
       progress.markSeen(level.id);
       chaser.reset();
       world.keepBehind(); // the street behind him moves back ahead
+      city?.handOver();
       beginRun();
     },
   });
@@ -470,6 +486,12 @@ function distanceToRoad() {
 // An obstacle the player failed to clear. Boost and the post-hit grace smash
 // through; a shield absorbs one hit; otherwise walls crash and the rest zap.
 function handleHit(item) {
+  if (dev.invincible) { // dev mode: smash through, keep going
+    track.smash(item);
+    sound.play('smash');
+    hud.flash('#ffc21a');
+    return;
+  }
   if (powers.has('boost') || player.grace > 0 || powers.has('shield')) {
     track.smash(item);
     const debris = inTunnel() ? 0x9a8f80 : 0xf59e1b;
@@ -506,12 +528,30 @@ function collectPower(type) {
   hud.say(pick(POWER_LINES[type]), { priority: 'low' });
 }
 
+const coinCounter = document.getElementById('coins');
+
 function collectCoins(count) {
   if (!count) return;
   coins += count;
   coinStreak = runTime - lastCoinTime < 0.6 ? coinStreak + count : 0;
   lastCoinTime = runTime;
   sound.play('coin', { step: coinStreak });
+  bursts.spawn(playerPoint().add(new THREE.Vector3(0, 0.6, -0.6)), { color: 0xffd23d, count: 14, speed: 4, size: 0.14, life: 0.45 });
+  coinCounter.classList.remove('bump');
+  void coinCounter.offsetWidth; // restart the animation
+  coinCounter.classList.add('bump');
+}
+
+// Patna traffic never stops honking: now and then an auto, a truck or a bike,
+// somewhere off to one side.
+const STREET_HORNS = ['horn-auto', 'horn-auto', 'horn-bike', 'horn-truck'];
+let hornTimer = 3;
+function streetHorns(dt) {
+  if (inTunnel()) return;
+  hornTimer -= dt;
+  if (hornTimer > 0) return;
+  hornTimer = 2.5 + Math.random() * 4.5;
+  sound.play(pick(STREET_HORNS), { pan: (Math.random() < 0.5 ? -1 : 1) * (0.4 + Math.random() * 0.5) });
 }
 
 function recharge(batteries) {
@@ -534,6 +574,17 @@ showMuted();
 muteButton.addEventListener('click', () => {
   toggleMute();
   muteButton.blur(); // keep Space/Enter for the game
+});
+
+// Bholu's horn: H or the horn button. Purely for fun (and Patna authenticity).
+function honk() {
+  if (state === 'running' || state === 'menu') sound.play('horn', { muffled: inTunnel() });
+}
+const hornButton = document.getElementById('horn');
+hornButton.addEventListener('click', () => {
+  sound.unlock();
+  honk();
+  hornButton.blur();
 });
 
 const pauseButton = document.getElementById('pause');
@@ -564,6 +615,8 @@ new Input((action, source) => {
     return;
   }
 
+  if (action === 'horn') return honk();
+
   if (state === 'running') {
     if (action === 'pause') return pause();
     if (!tutorial.allow(action, distance)) return;
@@ -588,8 +641,9 @@ function runFrame(realDt) {
   // The tutorial can slow time right down while it waits for the player.
   const wanted = tutorial.update(realDt, { player, distance, zone });
   timeScale = wanted < timeScale ? timeScale + (wanted - timeScale) * Math.min(1, realDt * 10) : wanted;
-  const dt = realDt * timeScale;
+  const dt = realDt * timeScale * dev.speed;
   runTime += dt;
+  streetHorns(dt);
   checkpointTimer += realDt;
   if (checkpointTimer > CHECKPOINT_EVERY) {
     checkpointTimer = 0;
@@ -638,7 +692,10 @@ function runFrame(realDt) {
 
   if (inTunnel()) {
     battery = Math.max(0, battery - BATTERY_DRAIN * dt);
-    if (battery === 0) return die('dark');
+    if (battery === 0) {
+      if (!dev.invincible) return die('dark');
+      battery = 1; // dev mode: the torch never dies
+    }
     if (battery < BATTERY_LOW) {
       if (!lowBatteryWarned) hud.say(pick(LOW_BATTERY_LINES), { who: 'bholu' });
       lowBatteryWarned = true;
@@ -702,8 +759,13 @@ function frame(timestamp) {
   }
 
   if (state !== 'paused') {
-    applyAtmosphere(Math.min(1, dt * 2.5));
+    applyAtmosphere(cinematic.wide ? 1 : Math.min(1, dt * 2.5)); // the drone shot starts clear
     world.update(dt, player.z);
+    if (cinematic.wide) world.skyline.visible = false; // from the sky the skyline band shows as a flat wall; the haze makes the horizon
+    if (city && player.z < city.endZ) { // ridden out of the old city
+      city.dispose();
+      city = null;
+    }
     bursts.update(dt);
   }
   // 2.5D cutscenes render at full sharpness whatever the game's quality setting.
@@ -721,9 +783,9 @@ function frame(timestamp) {
   requestAnimationFrame(frame);
 }
 
-// Handy for tuning from the browser console while running `npm run dev`.
-// e.g. game.skipToZone() puts the next zone gate 40 m ahead; game.progress.unlockAll().
-if (import.meta.env.DEV) {
+// Dev mode (?dev=1, or `npm run dev`): the dev panel (dev.js) plus `game` in
+// the browser console, e.g. game.skipToZone() puts the next zone gate 40 m ahead.
+if (DEV) {
   window.game = {
     player, track, chaser, powers, zones, voice, sound, settings, progress, cinematic, tutorial, stage,
     collectPower, startLevel, startEndless,
@@ -753,6 +815,18 @@ if (import.meta.env.DEV) {
       world.reset(player.z);
     },
   };
+  devPanel({
+    levels: LEVELS.length,
+    startLevel: async (id, { intro = true, thenFinish = false } = {}) => {
+      await startLevel(id, { intro });
+      if (thenFinish && state === 'running') window.game.skipToFinish(5);
+    },
+    startEndless,
+    skipToZone: () => state === 'running' && window.game.skipToZone(),
+    skipToFinish: () => state === 'running' && window.game.skipToFinish(),
+    skipCutscene: () => cinematic.finish(),
+    state: () => `${state} · ${level ? `delivery ${level.id}` : 'endless'} · ${zone} · ${Math.round(distance)} m`,
+  });
 }
 
 showMenu();

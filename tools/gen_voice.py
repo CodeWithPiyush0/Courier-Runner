@@ -2,7 +2,7 @@
 
 Reads every Dispatch line from src/dispatch.js and every cutscene line from
 src/story.js, speaks each one in its character's voice and writes
-public/vo/<hash>.mp3 plus public/vo/manifest.json (line text -> file).
+public/vo/<speaker>/<first-words>.mp3 plus public/vo/manifest.json (line text -> file).
 Lines that already have a file are skipped, so after editing the scripts just
 run this again to voice only the new lines.
 
@@ -32,18 +32,27 @@ sys.stdout.reconfigure(encoding="utf-8", line_buffering=True)  # live progress i
 MODEL = "gemini-3.8-flash-tts"
 CHECK_MODEL = "gemini-3.8-flash"
 
-# One voice per character. This TTS model reads plain-text directions aloud and
-# sometimes even reads [bracket tags] aloud, so every take is transcribed and
-# checked: the tags must not be spoken, the words must roughly match the script,
-# and (where `indian` is set) the accent should sound Indian. The word match is
-# loose on purpose: the transcriber writes the Indian pronunciation of e.g.
-# "courier" as "Kobholu", which is the accent working.
+# One voice per character. The accent comes from the Indian English language
+# code and the voice itself: no style directions go into the prompt, because
+# this TTS model sometimes reads them out ("Indian English accent... Bholu!").
+# Every take is still transcribed and checked: no direction-like words that
+# aren't in the script, the words must roughly match, and (where `indian` is
+# set) the accent should sound Indian. The word match is loose on purpose: the
+# transcriber writes Indian pronunciations its own way, which is the accent working.
 SPEAKERS = {
-    "dispatch": {"voice": "Puck", "tags": "[cheerful] [Indian English accent]", "language": "en-IN", "indian": True},
-    "bholu": {"voice": "Sadachbia", "tags": "[energetic] [young man] [Indian English accent]", "language": "en-IN", "indian": True},
-    "nani": {"voice": "Gacrux", "tags": "[warm] [elderly grandmother] [Indian English accent]", "language": "en-IN", "indian": True},
-    "mamu": {"voice": "Fenrir", "tags": "[gruff] [loud] [Indian English accent from Bihar]", "language": "en-IN", "indian": True},
+    "dispatch": {"voice": "Puck", "language": "en-IN", "indian": True},
+    "bholu": {"voice": "Sadachbia", "language": "en-IN", "indian": True},
+    "nani": {"voice": "Gacrux", "language": "en-IN", "indian": True},
+    "mamu": {"voice": "Fenrir", "language": "en-IN", "indian": True},
+    "pappu": {"voice": "Zubenelgenubi", "language": "en-IN", "indian": True},
+    "aunty": {"voice": "Sulafat", "language": "en-IN", "indian": True},
+    "ramesh": {"voice": "Algenib", "language": "en-IN", "indian": True},
+    "munni": {"voice": "Laomedeia", "language": "en-IN", "indian": True},
 }
+FOLDERS = {"dispatch": "mishra"}  # public/vo/<folder>/ per character (Dispatch is Mishra ji)
+# Words that only turn up in a take if the model spoke a direction aloud.
+DIRECTIONS = set("cheerful indian english accent energetic young man woman warm elderly grandmother gruff loud "
+                 "tone voice speaking style narrator".split())
 MIN_MATCH = 0.7  # transcript vs script word similarity needed to keep a take
 TAKES = 4
 CONTRACTIONS = {"n't": " not", "'re": " are", "'ll": " will", "'m": " am", "'ve": " have", "'s": " is"}
@@ -73,14 +82,18 @@ def script_lines():
 
 
 def file_for(speaker, text):
-    key = text if speaker == "dispatch" else f"{speaker}:{text}"  # Dispatch's original files keep their names
-    return f"{hashlib.sha1(key.encode()).hexdigest()[:12]}.mp3"
+    """public/vo/<speaker>/<the line's first words>.mp3, e.g. bholu/ka-ho-mishra-ji-always-awake.mp3.
+    A short hash keeps two lines that start alike apart."""
+    words_ = re.findall(r"[a-z0-9]+", text.lower().replace("'", ""))
+    slug = "-".join(words_[:7])[:48].strip("-") or "line"
+    tag = hashlib.sha1(text.encode()).hexdigest()[:4]
+    return f"{FOLDERS.get(speaker, speaker)}/{slug}-{tag}.mp3"
 
 
-def speak(speaker, text, tags=True):
+def speak(speaker, text):
     who = SPEAKERS[speaker]
     response = gemini.request(f"models/{MODEL}:generateContent", {
-        "contents": [{"parts": [{"text": f"{who['tags']} {text}" if tags and who["tags"] else text}]}],
+        "contents": [{"parts": [{"text": text}]}],
         "generationConfig": {
             "responseModalities": ["AUDIO"],
             "speechConfig": {
@@ -122,7 +135,8 @@ def check(path, text):
     response = gemini.request(f"models/{CHECK_MODEL}:generateContent", {
         "contents": [{"parts": [
             {"inlineData": {"mimeType": "audio/mpeg", "data": audio}},
-            {"text": "Transcribe this audio exactly, word for word, and say whether the speaker has an "
+            {"text": "Transcribe this audio exactly, word for word, in Latin script only (write any Hindi words in "
+                     "romanised Hinglish, e.g. 'ruko', never in Devanagari), and say whether the speaker has an "
                      "Indian English accent."},
         ]}],
         "generationConfig": {
@@ -139,8 +153,8 @@ def check(path, text):
 
 
 def spoke_tags(speaker, text, heard):
-    """Did the take read the style tags out loud?"""
-    return bool((set(words(SPEAKERS[speaker]["tags"])) - set(words(text))) & set(words(heard)))
+    """Did the take read something like a style direction out loud?"""
+    return bool((DIRECTIONS - set(words(text))) & set(words(heard)))
 
 
 def usable(speaker, text, score, heard):
@@ -173,11 +187,11 @@ def record(speaker, text):
     backup = path.with_suffix(".backup.mp3")  # first usable take, in case none sounds Indian
     for take in range(TAKES):
         try:
-            # Later takes drop the tags (accent from languageCode only) in case they keep being read out.
-            mime, audio = speak(speaker, text, tags=take < TAKES // 2)
+            mime, audio = speak(speaker, text)
         except RuntimeError as err:  # e.g. the model returned text instead of audio
             print(f"  take {take + 1}: no audio ({err})")
             continue
+        path.parent.mkdir(parents=True, exist_ok=True)
         to_mp3(mime, audio, path)
         score, indian, heard = check(path, text)
         accent_ok = indian or not SPEAKERS[speaker]["indian"]
@@ -242,9 +256,9 @@ def main():
     local_list.write_text(json.dumps(sorted(local), indent=1))
 
     # Recordings of lines that were edited or removed from the scripts.
-    used = {Path(f).name for f in manifest.values()}
-    for old in OUT.glob("*.mp3"):
-        if old.name not in used:
+    used = {f[len("vo/"):] for f in manifest.values()}
+    for old in OUT.rglob("*.mp3"):
+        if old.relative_to(OUT).as_posix() not in used:
             old.unlink()
             print(f"removed unused {old.name}")
 

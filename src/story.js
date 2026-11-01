@@ -15,6 +15,11 @@ export const CHARACTERS = {
   dispatch: { name: 'Mishra ji · Dispatch', portrait: '/art/dispatch.webp' },
   nani: { name: 'Nani', portrait: '/art/portrait-nani.webp' },
   mamu: { name: 'Traffic Mamu', portrait: '/art/portrait-mamu.webp' },
+  // Customers Bholu delivers to on the way (one at the end of each delivery).
+  pappu: { name: 'Pappu · Customer', portrait: '/art/portrait-pappu.webp' },
+  aunty: { name: 'Gupta Aunty · Customer', portrait: '/art/portrait-aunty.webp' },
+  ramesh: { name: 'Ramesh bhai · Customer', portrait: '/art/portrait-ramesh.webp' },
+  munni: { name: 'Munni didi · Customer', portrait: '/art/portrait-munni.webp' },
 };
 
 // Each delivery is a level. `zones` is the route: a list of [zone, metres], and
@@ -39,6 +44,8 @@ export const LEVELS = [
       { who: 'dispatch', shot: 'dispatch', text: "It's her old radio, fixed and switched on. Today is her birthday. Deliver it by evening. Chalo!" },
     ],
     outro: [
+      { who: 'pappu', shot: 'pappu', text: "Bholu bhaiya! My GK book, just in time. Exam is tomorrow!" },
+      { who: 'bholu', shot: 'pappu', text: "All the best, Pappu! Question one: who is Patna's fastest delivery boy?" },
       { who: 'bholu', shot: 'street-grin', text: "Old city done! Patna traffic is no match for me." },
       { who: 'dispatch', shot: 'dispatch-close', text: "Don't celebrate yet. A traffic police Mamu saw you jump that signal." },
     ],
@@ -59,6 +66,8 @@ export const LEVELS = [
       { who: 'dispatch', shot: 'dispatch-close', text: "Bholu, if that Mamu catches you, no birthday, only challan. Bhago!" },
     ],
     outro: [
+      { who: 'aunty', shot: 'aunty', text: "Arre Bholu, my new pressure cooker! Sit, have one litti before you go." },
+      { who: 'bholu', shot: 'aunty', text: "Next time, aunty! A traffic police Mamu is chasing me today." },
       { who: 'dispatch', shot: 'dispatch', text: "You lost him! But Gandhi Setu is jammed for ten kilometres." },
       { who: 'bholu', shot: 'street-grin', text: "Ten kilometres? Then I'm taking the tunnel under the bridge!" },
     ],
@@ -78,6 +87,8 @@ export const LEVELS = [
       { who: 'dispatch', shot: 'dispatch', text: "Keep your phone torch on. And don't drop Nani's radio in the Ganga!" },
     ],
     outro: [
+      { who: 'ramesh', shot: 'ramesh', text: "My charger! Three hours in this jam, bhai, and my phone was dead." },
+      { who: 'bholu', shot: 'ramesh', text: "Charge it full, Ramesh bhai. This jam is not going anywhere." },
       { who: 'bholu', shot: 'haat', text: "Hajipur! I can smell the bananas already." },
       { who: 'mamu', shot: 'mamu', text: "I can still see you, scooter wale! Hajipur mein bhi pakad lenge!" },
     ],
@@ -96,6 +107,8 @@ export const LEVELS = [
       { who: 'bholu', shot: 'parcel', text: "Mishra ji, the parcel is singing now! It's playing old film songs!" },
     ],
     outro: [
+      { who: 'munni', shot: 'munni', text: "My new weighing scale! Now nobody can cheat me. Take a banana, Bholu." },
+      { who: 'bholu', shot: 'munni', text: "Thank you, didi! Fuel for the last stretch to Nani's." },
       { who: 'dispatch', shot: 'dispatch-close', text: "Muzaffarpur is close. Nani has called nine times. Nine!" },
     ],
   },

@@ -30,6 +30,10 @@ VOICES = {
     "dispatch": {"voice": "en-IN-PrabhatNeural", "rate": "+2%", "pitch": "-8Hz"},
     "nani": {"voice": "hi-IN-SwaraNeural", "rate": "-12%", "pitch": "-14Hz"},
     "mamu": {"voice": "hi-IN-MadhurNeural", "rate": "+0%", "pitch": "-8Hz"},
+    "pappu": {"voice": "en-IN-PrabhatNeural", "rate": "+12%", "pitch": "+18Hz"},
+    "aunty": {"voice": "hi-IN-SwaraNeural", "rate": "+4%", "pitch": "+0Hz"},
+    "ramesh": {"voice": "hi-IN-MadhurNeural", "rate": "-4%", "pitch": "-16Hz"},
+    "munni": {"voice": "en-IN-NeerjaExpressiveNeural", "rate": "+6%", "pitch": "+4Hz"},
 }
 LOCAL = OUT / "local.json"
 
@@ -75,6 +79,7 @@ async def main():
 
     for i, (speaker, text) in enumerate(todo, 1):
         name = file_for(speaker, text)
+        (OUT / name).parent.mkdir(parents=True, exist_ok=True)
         spoken = await speak(speaker, text, OUT / name)
         missing = set(words(text)) - set(words(" ".join(spoken)))
         print(f"[{i}/{len(todo)}] {speaker}: {text}" + (f"  (skipped words: {missing})" if missing else ""))
@@ -82,10 +87,10 @@ async def main():
 
     manifest = {t: f"vo/{file_for(s, t)}" for s, t in lines if (OUT / file_for(s, t)).exists()}
     (OUT / "manifest.json").write_text(json.dumps(manifest, indent=1, ensure_ascii=False), encoding="utf-8")
-    used = {Path(f).name for f in manifest.values()}
+    used = {f[len("vo/"):] for f in manifest.values()}
     LOCAL.write_text(json.dumps(sorted(local & used), indent=1))
-    for old in OUT.glob("*.mp3"):
-        if old.name not in used:
+    for old in OUT.rglob("*.mp3"):
+        if old.relative_to(OUT).as_posix() not in used:
             old.unlink()
     print(f"manifest: {len(manifest)}/{len(lines)} lines voiced")
 

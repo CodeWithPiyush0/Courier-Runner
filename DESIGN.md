@@ -22,6 +22,12 @@ design per person, then every picture of them from that design.
 **Look:** Bholu in a saffron helmet with stickers, a teal courier jacket and a
 red-and-white gamchha, on a mint-green scooter with the parcel box behind. All story text lives in `src/story.js`.
 
+**Customers on the way:** each of the first four deliveries ends with Bholu
+dropping a small order off before the leg's closing lines: Pappu's GK book
+(coaching centre), Gupta Aunty's pressure cooker (Dak Bungalow), Ramesh bhai's
+phone charger (truck driver stuck on the Setu) and Munni didi's weighing scale
+(Hajipur haat). Made-up characters, drawn in the cast's style by `gen_cast.py`.
+
 ## Deliveries (levels)
 | # | Title | Route (metres) | New here |
 |---|---|---|---|
@@ -107,12 +113,13 @@ channels. Harder ones unlock with distance.
   cuts off an important line.
 
 ## Opening and dialogue
-Delivery 1 opens high in the sky: two painted drone views of old Patna (the
-street running to the Ganga and Gandhi Setu, then rooftop height) sink towards
-the street, and the 3D camera comes down behind Bholu. 3D camera moves always
-stay behind him (his sprites are painted from behind) and never look down on
-the 3D rooftops. Story pictures fill the screen. Lines show in a speech
-bubble beside the speaker's face (or with a portrait at the top when they
+Delivery 1 opens with a real 3D drone shot: high over old Patna (`city.js`,
+blocks of houses wearing the painted shopfronts on every wall and painted
+rooftops seen from above, with 3D water tanks and trees), the camera flies down
+the street and comes down behind Bholu in one continuous move. 3D camera moves
+always stay behind him (his sprites are painted from behind). Story pictures fill the screen (no particles). Lines show in a comic-book speech
+bubble beside the speaker's face (never over a face), gliding smoothly with the
+camera rather than jiggling with the character (or with a portrait at the top when they
 aren't in the picture); letterbox bars appear only for 3D camera shots.
 
 ## Obstacles
@@ -123,6 +130,18 @@ bricks or cones; duck a banner or a boom barrier. In tunnels: a junk heap, a
 rusty pipe, hanging cables. The camera sits high enough (4.8 m) that the lane
 ahead shows over Bholu's helmet. The street's front buildings wear painted
 shopfronts (`public/art/facades/`, `tools/gen_props.py`), each as tall as its picture.
+
+## Dev mode
+Open the game with `?dev=1` (always on under `npm run dev`) for a DEV panel:
+invincible (on by default), game speed ×1/×2/×4, next zone, finish the
+delivery, skip the cutscene, start any delivery, the ending, or Endless. It
+never changes saved progress. `window.game` is available in the console too.
+
+## Coins and horns
+Coins are big glowing gold ₹ coins with a halo and a twinkle, bobbing as they
+spin; picking one up sparkles, bumps the counter and plays a "cha-ching" that
+climbs through a streak. On the road, autos, trucks and bikes honk now and
+then off to one side; Bholu honks with H or the horn button.
 
 ## Tutorial
 When a lesson obstacle is close, time nearly stops and a gesture (touch) or
@@ -148,7 +167,7 @@ ChatGPT whose results `python tools/import_art.py art-requests/out` imports.
   Pieces that use another piece as a reference wait for it.
 - **UI art** — `npm run art` (`tools/gen_images.py`): key art (wide + tall),
   icons (₹ coin, UPI, helmet, chai, battery), emblem, favicon.
-- **Voices** — `npm run voice` (`tools/gen_voice.py`): Gemini TTS per character
+- **Voices** — `npm run voice` (`tools/gen_voice.py`, saved as `public/vo/<character>/<first-words>.mp3`): Gemini TTS per character
   (Dispatch, Bholu, Nani, Mamu), each take transcribed and checked for words and
   accent. Rerun after editing lines to voice only the new ones.
 - **Music** — `npm run music` (`tools/gen_music.py`): menu, road and tunnel

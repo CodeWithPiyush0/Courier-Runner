@@ -1,13 +1,12 @@
 import * as THREE from 'three';
-import { particleMaterial } from './effects.js';
 
 const FOV = 40;
 const BG_DEPTH = 14; // background plate distance from the camera
 const CAST_DEPTH = 6; // character cut-outs
-const DUST_DEPTH = 3.5; // floating particles in front
+const CAST_SINK = 0.45; // how far a cut-out's bottom edge sits below the frame (camera moves never reveal it)
 const COVER = 1.22; // background bigger than the view, so camera moves never show its edge
 // Which character each cut-out shows (to know who is speaking).
-const WHO = { bholu: 'bholu', mishra: 'dispatch', nani: 'nani', mamu: 'mamu' };
+const WHO = { bholu: 'bholu', mishra: 'dispatch', nani: 'nani', mamu: 'mamu', pappu: 'pappu', aunty: 'aunty', ramesh: 'ramesh', munni: 'munni' };
 const whoIs = (img) => Object.entries(WHO).find(([part]) => img.includes(part))?.[1];
 const ease = (t) => t * t * (3 - 2 * t);
 
@@ -18,8 +17,7 @@ const MOVES = {
   'push-fast': (t) => ({ x: 0, y: 0, z: -2 * ease(Math.min(1, t * 1.6)) }),
   'truck-right': (t) => ({ x: -0.9 + 1.8 * ease(t), y: 0, z: -0.3 * t }),
   'truck-left': (t) => ({ x: 0.9 - 1.8 * ease(t), y: 0, z: -0.3 * t }),
-  rise: (t) => ({ x: 0, y: -0.5 + 0.8 * ease(t), z: -0.6 * t }),
-  descend: (t) => ({ x: 0, y: 0.55 - 1.1 * ease(t), z: -1.4 * t }), // a drone sinking towards the street
+  rise: (t) => ({ x: 0, y: 0.6 * ease(t), z: -0.6 * t }), // only upwards: below rest, a cut-out's waist would show
   drift: (t) => ({ x: 0.5 * Math.sin(t * 2.2), y: 0.15 * Math.sin(t * 3.1), z: -0.5 * t, roll: 0.01 * Math.sin(t * 2) }),
 };
 
@@ -64,7 +62,7 @@ export class Stage {
     await Promise.all(names.map((name) => this.texture(name)));
   }
 
-  // Compose a shot: { bg, cast: [{ img, side }], move, dust, tint }.
+  // Compose a shot: { bg, cast: [{ img, side }], move, tint }.
   // `speaker` is who is talking (they bob with the voice; the speech bubble points at them).
   async show(shot, speaker) {
     this.shot = shot;
@@ -88,11 +86,9 @@ export class Stage {
       const imageAspect = bg.image.width / bg.image.height;
       // Cover the view (like CSS background-size: cover), plus a margin for moves.
       const scale = Math.max(v.width / imageAspect, v.height) * COVER;
-      const plane = new THREE.Mesh(
-        new THREE.PlaneGeometry(imageAspect * scale, scale),
-        new THREE.MeshBasicMaterial({ map: bg, color: shot.tint ?? 0xffffff }),
-      );
-      plane.position.set(shot.bgX ?? 0, 0, -BG_DEPTH);
+      const geometry = new THREE.PlaneGeometry(imageAspect * scale, scale);
+      geometry.translate(shot.bgX ?? 0, 0, -BG_DEPTH);
+      const plane = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ map: bg, color: shot.tint ?? 0xffffff }));
       this.group.add(plane);
       this.bg = plane;
     }
@@ -112,47 +108,46 @@ export class Stage {
       const geometry = new THREE.PlaneGeometry(width, height).translate(0, height / 2, 0); // origin at the bottom
       const plane = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ map: texture, transparent: true, alphaTest: 0.02 }));
       const side = portrait ? 0 : { left: -0.24, right: 0.24, centre: 0 }[member.side ?? 'centre'];
-      plane.position.set(side * v.width, -v.height / 2 - 0.25, -CAST_DEPTH);
+      plane.position.set(side * v.width, -v.height / 2 - CAST_SINK, -CAST_DEPTH); // waist well below the frame
       plane.side = portrait ? 'centre' : member.side ?? 'centre';
-      plane.headHeight = height * 0.86; // the face, a little under the top of the cut-out
+      plane.size = { width, height };
       this.group.add(plane);
       this.cast.push(plane);
       if (whoIs(member.img) === speaker) this.speakerPlane = plane;
     }
 
-    this.dust = this.makeDust(shot.dust ?? 'dust');
-    this.group.add(this.dust);
     this.ready = true;
   }
 
-  makeDust(kind) {
-    const count = kind === 'none' ? 0 : 70;
-    const positions = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) {
-      positions.set([(Math.random() - 0.5) * 7, (Math.random() - 0.5) * 4, -DUST_DEPTH - Math.random() * 3], i * 3);
-    }
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    const color = { dust: 0xffd9a0, bubbles: 0xbff7ff, sparkle: 0x9fffe0, steam: 0xfff1d6 }[kind] ?? 0xffd9a0;
-    const points = new THREE.Points(geometry, particleMaterial({ color, size: kind === 'bubbles' ? 0.09 : 0.05, opacity: 0.8, maxPixels: 10 }));
-    points.kind = kind;
-    points.frustumCulled = false;
-    return points;
+  // A cut-out's face on screen, in CSS pixels: { left, right, top (of the
+  // head), y (eyes), bottom (chin) }. Measured from where the cut-out rests,
+  // ignoring its breathing and bobbing, so things placed by it stay steady.
+  faceBox(plane) {
+    const { width, height } = plane.size;
+    const screen = (x, y) => {
+      const p = new THREE.Vector3(plane.position.x + x, plane.position.y + y, plane.position.z).project(this.camera);
+      return { x: ((p.x + 1) / 2) * window.innerWidth, y: ((1 - p.y) / 2) * window.innerHeight };
+    };
+    const topLeft = screen(-width * 0.2, height * 0.99);
+    const bottomRight = screen(width * 0.2, height * 0.66);
+    return {
+      left: topLeft.x, right: bottomRight.x, top: topLeft.y, bottom: bottomRight.y,
+      y: screen(0, height * 0.82).y, x: screen(0, 0).x,
+    };
   }
 
-  // Where the speaker's face is on screen, in CSS pixels, and which side of
-  // the picture they stand on (left | right | centre); null if they're not in it.
+  // Where the speaker's face is, which side of the picture they stand on
+  // (left | right | centre) and how far the free space reaches on their open
+  // side before the next face or the screen edge; null if they're not in it.
   speakerAnchor() {
     const plane = this.speakerPlane;
     if (!plane) return null;
-    const point = new THREE.Vector3(0, plane.headHeight, 0);
-    plane.localToWorld(point);
-    point.project(this.camera);
-    return {
-      x: ((point.x + 1) / 2) * window.innerWidth,
-      y: ((1 - point.y) / 2) * window.innerHeight,
-      side: plane.side,
-    };
+    const face = this.faceBox(plane);
+    const others = this.cast.filter((p) => p !== plane).map((p) => this.faceBox(p));
+    const reach = plane.side === 'right'
+      ? Math.max(0, ...others.filter((o) => o.x < face.x).map((o) => o.right))
+      : Math.min(window.innerWidth, ...others.filter((o) => o.x > face.x).map((o) => o.left));
+    return { face, side: plane.side, reach };
   }
 
   // progress: 0..1 through the shot (drives the camera move).
@@ -175,15 +170,6 @@ export class Stage {
       const red = Math.sin(this.time * 9) > 0;
       this.bg.material.color.set(red ? 0xffc4c4 : 0xc4d0ff);
     }
-
-    const positions = this.dust.geometry.attributes.position.array;
-    const rise = this.dust.kind === 'bubbles' ? 0.5 : this.dust.kind === 'steam' ? 0.25 : 0.06;
-    for (let i = 0; i < positions.length; i += 3) {
-      positions[i] += Math.sin(this.time + i) * 0.002;
-      positions[i + 1] += rise * dt;
-      if (positions[i + 1] > 2.2) positions[i + 1] = -2.2;
-    }
-    this.dust.geometry.attributes.position.needsUpdate = true;
   }
 
   render(renderer) {

@@ -242,6 +242,9 @@ img { -webkit-user-drag: none; }
 #pause::before { left: 12px; }
 #pause::after { right: 12px; }
 #mute { right: var(--right); }
+#horn { left: calc(var(--left) + 56px); display: grid; place-items: center; }
+#coins.bump { animation: coin-bump 0.25s ease-out; }
+@keyframes coin-bump { 40% { transform: scale(1.25); } }
 
 #flash {
   position: fixed;
@@ -419,49 +422,58 @@ kbd {
   pointer-events: auto;
 }
 
-/* Speech bubble: beside the speaker's head with a tail pointing at them
-   (cinematic.js places it every frame), or with a portrait at the top when
-   the speaker isn't in the picture ("call"). */
+/* Speech bubble, comic-book style: beside the speaker's head with a wedge
+   tail pointing at them (cinematic.js places it once per line), or with a
+   portrait at the top when the speaker isn't in the picture ("call"). */
 #bubble {
+  --ink: #111;
   position: absolute;
   left: 0;
   top: 0;
   width: max-content;
   max-width: var(--bubble-width, min(400px, 44vw));
-  padding: 10px 16px 12px;
-  border: 3px solid var(--indigo, #121633);
-  border-radius: 22px;
-  background: var(--cream);
-  color: #121633;
-  box-shadow: 0 6px 0 rgba(7, 8, 26, 0.35);
-  animation: bubble-pop 0.25s cubic-bezier(0.2, 1.5, 0.4, 1);
+  padding: 16px 18px 12px;
+  border: 4px solid var(--ink);
+  border-radius: 26px;
+  background: #fffdf5;
+  color: var(--ink);
+  box-shadow: 5px 5px 0 var(--ink);
+  animation: bubble-pop 0.22s cubic-bezier(0.2, 1.6, 0.4, 1);
 }
-#bubble b { display: block; margin-bottom: 2px; font: 800 12px / 1.2 var(--body); letter-spacing: 1px; text-transform: uppercase; color: var(--rani); }
-#bubble span { display: block; font: 700 clamp(15px, 3.8vw, 19px) / 1.3 var(--body); }
-#bubble::after { /* the tail */
-  content: '';
+#bubble b { /* the name, on a little tilted caption box */
   position: absolute;
-  width: 22px;
-  height: 22px;
-  background: var(--cream);
-  border: 3px solid var(--indigo, #121633);
-  border-top: 0;
-  border-left: 0;
+  top: -15px;
+  left: 14px;
+  padding: 2px 8px 0;
+  border: 3px solid var(--ink);
+  background: var(--marigold);
+  font: 400 15px / 1.1 'Bangers', var(--display);
+  letter-spacing: 1.5px;
+  transform: rotate(-3deg);
 }
-#bubble.tail-left::after { left: -13px; top: var(--tail, 24px); transform: rotate(135deg); }
-#bubble.tail-right::after { right: -13px; top: var(--tail, 24px); transform: rotate(-45deg); }
-#bubble.tail-down::after { left: var(--tail, 50%); bottom: -13px; transform: translateX(-50%) rotate(45deg); }
+#bubble span { display: block; font: 700 clamp(15px, 3.8vw, 19px) / 1.25 'Comic Neue', var(--body); }
+/* The tail: a black wedge with a white one inside it, so it keeps the outline. */
+#bubble::before, #bubble::after { content: ''; position: absolute; width: 0; height: 0; border-style: solid; }
+#bubble.tail-left::before { left: -26px; top: var(--tail, 24px); border-width: 10px 26px 10px 0; border-color: transparent var(--ink) transparent transparent; }
+#bubble.tail-left::after { left: -18px; top: calc(var(--tail, 24px) + 4px); border-width: 6px 18px 6px 0; border-color: transparent #fffdf5 transparent transparent; }
+#bubble.tail-right::before { right: -26px; top: var(--tail, 24px); border-width: 10px 0 10px 26px; border-color: transparent transparent transparent var(--ink); }
+#bubble.tail-right::after { right: -18px; top: calc(var(--tail, 24px) + 4px); border-width: 6px 0 6px 18px; border-color: transparent transparent transparent #fffdf5; }
+#bubble.tail-down::before { left: var(--tail, 50%); bottom: -28px; transform: translateX(-50%); border-width: 28px 10px 0; border-color: var(--ink) transparent transparent; }
+#bubble.tail-down::after { left: var(--tail, 50%); bottom: -19px; transform: translateX(-50%); border-width: 20px 6px 0; border-color: #fffdf5 transparent transparent; }
+#bubble.tail-up::before { left: var(--tail, 50%); top: -28px; transform: translateX(-50%); border-width: 0 10px 28px; border-color: transparent transparent var(--ink); }
+#bubble.tail-up::after { left: var(--tail, 50%); top: -19px; transform: translateX(-50%); border-width: 0 6px 20px; border-color: transparent transparent #fffdf5; }
+#bubble.tail-up b { top: auto; bottom: -15px; } /* the name tag moves out of the tail's way */
 #bubble.call { display: flex; align-items: center; gap: 12px; }
-#bubble.call::after { display: none; }
+#bubble.call::before, #bubble.call::after { display: none; }
 #bubble.call img {
   width: 52px;
   height: 52px;
   flex: none;
   border-radius: 50%;
-  border: 3px solid var(--saffron);
+  border: 3px solid var(--ink);
   object-fit: cover;
 }
-@keyframes bubble-pop { from { opacity: 0; scale: 0.85; } }
+@keyframes bubble-pop { from { opacity: 0; scale: 0.8; } }
 
 #stamp {
   position: fixed;

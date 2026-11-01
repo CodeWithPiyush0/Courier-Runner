@@ -142,10 +142,37 @@ function rupeeCoin() {
     ctx.fillStyle = '#8a5a10'; ctx.font = 'bold 76px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('₹', w / 2, h / 2 + 4);
   });
-  const faceMat = standard(0xffffff, { map: face, metalness: 0.5, roughness: 0.35, flatShading: false });
-  const edge = standard(0xc8901f, { metalness: 0.6, roughness: 0.3 });
-  return new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.06, 20).rotateX(Math.PI / 2), [edge, faceMat, faceMat]);
+  // A warm glow of its own, so it shines even in the shade or a dark tunnel.
+  const faceMat = standard(0xffffff, { map: face, metalness: 0.45, roughness: 0.3, flatShading: false, emissive: 0x6a4500, emissiveIntensity: 0.6 });
+  const edge = standard(0xe0a530, { metalness: 0.6, roughness: 0.25, emissive: 0x5a3a00, emissiveIntensity: 0.6 });
+  return new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.46, 0.09, 24).rotateX(Math.PI / 2), [edge, faceMat, faceMat]);
 }
+
+// A soft round glow and a four-point star, drawn once and shared by every coin.
+const coinHaloMaterial = new THREE.SpriteMaterial({
+  map: canvasTexture(64, 64, (ctx, w, h) => {
+    const glow = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+    glow.addColorStop(0, 'rgba(255,214,90,0.9)');
+    glow.addColorStop(0.45, 'rgba(255,190,40,0.35)');
+    glow.addColorStop(1, 'rgba(255,170,0,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, w, h);
+  }),
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+});
+const twinkleMaterial = new THREE.SpriteMaterial({
+  map: canvasTexture(64, 64, (ctx, w, h) => {
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const r = i % 2 ? 5 : 31;
+      const a = (i / 8) * Math.PI * 2;
+      ctx.lineTo(w / 2 + Math.cos(a) * r, h / 2 + Math.sin(a) * r);
+    }
+    ctx.fill();
+  }),
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+});
 
 function upiCard() {
   const qr = canvasTexture(128, 160, (ctx, w, h) => {
@@ -244,11 +271,25 @@ export function buildTrackMakers() {
   return {
     ...OBSTACLES,
 
-    coin: () => {
+    coin: () => { // a big gold ₹ with a soft halo and a twinkle, bobbing as it spins
       const g = new THREE.Group();
       const coin = rupeeCoin();
-      coin.position.y = 1.0;
+      coin.position.y = 1.1;
       g.add(coin);
+      const halo = new THREE.Sprite(coinHaloMaterial);
+      halo.scale.setScalar(1.7);
+      halo.position.y = 1.1;
+      g.add(halo);
+      const twinkle = new THREE.Sprite(twinkleMaterial);
+      twinkle.position.set(0.28, 1.42, 0.1);
+      g.add(twinkle);
+      const phase = Math.random() * Math.PI * 2;
+      g.animate = (time) => {
+        const bob = Math.sin(time * 4 + phase) * 0.12;
+        coin.position.y = halo.position.y = 1.1 + bob;
+        twinkle.position.y = 1.42 + bob;
+        twinkle.scale.setScalar(0.25 + Math.max(0, Math.sin(time * 6 + phase)) * 0.45);
+      };
       g.spinner = coin;
       return g;
     },

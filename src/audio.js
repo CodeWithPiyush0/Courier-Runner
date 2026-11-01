@@ -189,7 +189,9 @@ export class Sound {
   // ---------- synthesized effects ----------
 
   // A pitched blip: oscillator sliding from `from` to `to` Hz with a quick decay.
-  tone({ type = 'sine', from, to = from, duration, volume = 0.3, delay = 0, lowpass = 0 }) {
+  // `hold` keeps the note at full volume until just before the end (horns);
+  // otherwise it decays away like a chime. `pan` is -1 (left) .. 1 (right).
+  tone({ type = 'sine', from, to = from, duration, volume = 0.3, delay = 0, lowpass = 0, hold = false, pan = 0 }) {
     const ctx = this.ctx;
     const start = ctx.currentTime + delay;
     const osc = ctx.createOscillator();
@@ -199,6 +201,7 @@ export class Sound {
     const env = ctx.createGain();
     env.gain.setValueAtTime(0.0001, start);
     env.gain.exponentialRampToValueAtTime(volume, start + 0.008);
+    if (hold) env.gain.setValueAtTime(volume, start + duration - 0.04);
     env.gain.exponentialRampToValueAtTime(0.0001, start + duration);
     let node = osc.connect(env);
     if (lowpass) {
@@ -206,6 +209,11 @@ export class Sound {
       filter.type = 'lowpass';
       filter.frequency.value = lowpass;
       node = node.connect(filter);
+    }
+    if (pan) {
+      const panner = ctx.createStereoPanner();
+      panner.pan.value = pan;
+      node = node.connect(panner);
     }
     node.connect(this.sfxBus);
     osc.start(start);
@@ -235,7 +243,8 @@ export class Sound {
 
   // Play a named effect. `muffled` dulls things in a tunnel;
   // `step` raises the pitch (coin streaks).
-  play(name, { muffled = false, step = 0 } = {}) {
+  // `pan` places street sounds left or right.
+  play(name, { muffled = false, step = 0, pan = 0 } = {}) {
     if (!this.ctx || settings.get('muted')) return;
     const muffle = muffled ? 1800 : 0;
     const pitch = 2 ** (Math.min(step, 12) / 12);
@@ -254,9 +263,29 @@ export class Sound {
         this.tone({ type: 'sawtooth', from: 180, to: 1100, duration: 0.42, volume: 0.1, lowpass: 2400 });
         this.noise({ from: 400, to: 3000, duration: 0.45, volume: 0.12, q: 1.5 });
         break;
-      case 'coin':
-        this.tone({ from: 1320 * pitch, duration: 0.07, volume: 0.16 });
-        this.tone({ from: 1760 * pitch, duration: 0.12, volume: 0.14, delay: 0.05 });
+      case 'coin': // a bright "cha-ching" that climbs through a streak
+        this.tone({ type: 'triangle', from: 1568 * pitch, duration: 0.08, volume: 0.15 });
+        this.tone({ type: 'triangle', from: 2093 * pitch, duration: 0.22, volume: 0.13, delay: 0.06 });
+        this.tone({ from: 3136 * pitch, duration: 0.18, volume: 0.05, delay: 0.06 });
+        this.noise({ filter: 'highpass', from: 6000, to: 9000, duration: 0.12, volume: 0.04, delay: 0.05 });
+        break;
+      case 'horn': // Bholu's scooter: a cheeky double "peep-peep"
+        for (const delay of [0, 0.2]) {
+          this.tone({ type: 'square', from: 415, duration: 0.15, volume: 0.07, lowpass: 2200, hold: true, delay });
+          this.tone({ type: 'square', from: 523, duration: 0.15, volume: 0.06, lowpass: 2200, hold: true, delay });
+        }
+        break;
+      case 'horn-auto': // an auto-rickshaw's nasal "pom-pom", off to one side
+        for (const delay of [0, 0.17]) {
+          this.tone({ type: 'square', from: 350, duration: 0.12, volume: 0.035, lowpass: 1400, hold: true, delay, pan });
+          this.tone({ type: 'square', from: 440, duration: 0.12, volume: 0.03, lowpass: 1400, hold: true, delay, pan });
+        }
+        break;
+      case 'horn-truck': // a truck's long air horn
+        [185, 233, 277].forEach((f) => this.tone({ type: 'sawtooth', from: f, duration: 0.75, volume: 0.025, lowpass: 1300, hold: true, pan }));
+        break;
+      case 'horn-bike': // a motorbike's quick beeps
+        [0, 0.11, 0.22].forEach((delay) => this.tone({ type: 'square', from: 880, duration: 0.08, volume: 0.025, lowpass: 2600, hold: true, delay, pan }));
         break;
       case 'charge': // a battery for the torch
         this.tone({ type: 'square', from: 440, to: 880, duration: 0.12, volume: 0.1, lowpass: 3000 });

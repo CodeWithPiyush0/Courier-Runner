@@ -34,6 +34,7 @@ function canvasTexture(width, height, draw) {
 // tools/gen_props.py). Each building is as tall as its picture, so nothing stretches.
 const FACADES = ['fa-sweets', 'fa-mobile', 'fa-chai', 'fa-cloth', 'fa-medical', 'fa-litti', 'fa-books', 'fa-tent'];
 const FRONT_WIDTH = SEGMENT_LENGTH * 0.96;
+const ROOFS = ['rf-tank', 'rf-solar', 'rf-garden', 'rf-plain']; // painted rooftops (public/art/roofs/)
 const textureLoader = new THREE.TextureLoader();
 
 function facadeMaterial(name) {
@@ -296,6 +297,10 @@ function mesh(geometry, material, x = 0, y = 0, z = 0) {
 
 function buildMaterials() {
   const facades = FACADES.map(facadeMaterial);
+  const roofs = ROOFS.map((name) => {
+    const map = textureLoader.load(`/art/roofs/${name}.webp`, (texture) => { texture.colorSpace = THREE.SRGBColorSpace; });
+    return standard(0xffffff, { map, flatShading: false, roughness: 1 });
+  });
   const stencil = canvasTexture(256, 256, (ctx, w, h) => {
     ctx.fillStyle = '#6f6b64'; ctx.fillRect(0, 0, w, h);
     ctx.fillStyle = 'rgba(30,25,20,0.35)';
@@ -312,12 +317,12 @@ function buildMaterials() {
     wireGeo: new THREE.CylinderGeometry(0.025, 0.025, ROAD_WIDTH + SIDEWALK * 2 + 2, 4).rotateZ(Math.PI / 2),
     backGeo: new THREE.BoxGeometry(BUILDING_DEPTH + 2, 1, SEGMENT_LENGTH * 0.45).translate(0, 0.5, 0),
     groundGeo: new THREE.PlaneGeometry(160, SEGMENT_LENGTH).rotateX(-Math.PI / 2),
-    // backWalls[storeys]: windows on every wall (they show through the gaps), a plain roof.
-    backWalls: Object.fromEntries([2, 3, 4, 5, 6].map((storeys) => [storeys, WALLS.map((wall) => {
+    // backWalls[storeys]: windows on every wall (they show through the gaps), a painted roof.
+    backWalls: Object.fromEntries([2, 3, 4, 5, 6].map((storeys) => [storeys, WALLS.map((wall, i) => {
       const texture = backFacade(wall);
       texture.repeat.set(1.5, storeys);
       const face = standard(0xffffff, { map: texture, roughness: 1 });
-      const roof = standard(new THREE.Color(wall).multiplyScalar(0.6), { roughness: 1 });
+      const roof = roofs[i % roofs.length];
       return [face, face, roof, roof, face, face];
     })])),
     tankGeo: new THREE.CylinderGeometry(0.55, 0.55, 1.2, 10).translate(0, 0.6, 0),
@@ -332,6 +337,7 @@ function buildMaterials() {
     plainWall: standard(0xb8aa96, { roughness: 1 }),
     roof: standard(0x6b6359),
     facades,
+    roofs,
     pole: standard(0x3b3d42, { metalness: 0.5 }),
     lampGlow: basic(0xffd27a),
     wire: basic(0x141414),
@@ -381,6 +387,12 @@ export class World {
     this.behind = metres;
   }
 
+  // The stretch of street currently built: [furthest z ahead, furthest z behind].
+  get span() {
+    const zs = this.segments.map((seg) => seg.position.z);
+    return [Math.min(...zs) - SEGMENT_LENGTH / 2, Math.max(...zs) + SEGMENT_LENGTH / 2];
+  }
+
   // Dress a segment for the zone it is in, with a fresh mix of buildings.
   decorate(seg) {
     const zone = this.zones.zoneAt(seg.position.z);
@@ -392,7 +404,8 @@ export class World {
         const picture = front.map.image;
         building.scale.y = picture ? (FRONT_WIDTH * picture.height) / picture.width : 12;
         building.position.set(building.side * BUILDING_X, FLOOR, 0);
-        const { plainWall, roof } = this.materials;
+        const { plainWall } = this.materials;
+        const roof = pick(this.materials.roofs);
         // BoxGeometry faces: +x, -x, +y, -y, +z, -z. The shopfront faces the road.
         building.material = building.side < 0
           ? [front, plainWall, roof, plainWall, plainWall, plainWall]

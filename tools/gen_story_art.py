@@ -78,11 +78,22 @@ ASSETS = {
     "cut-mamu-laugh": ("story", "3:4", "cutout", ["story/cut-mamu"], f"{CUTOUT} The same policeman as the reference, helmet off under his arm and sunglasses pushed up, laughing warmly: a kind uncle."),
     "portrait-mamu": (".", "1:1", "portrait", ["story/cut-mamu"], f"Head-and-shoulders portrait of the traffic policeman in the reference, stern but secretly kind, background a softly blurred Patna street at golden hour. {REAL}"),
 
+    # --- customers (drawn by tools/gen_cast.py; listed here for import_art)
+    "cut-pappu": ("story", "3:4", "cutout", [], f"{CUTOUT} Pappu, a skinny, cheerful coaching-centre student."),
+    "cut-aunty": ("story", "3:4", "cutout", [], f"{CUTOUT} Gupta Aunty, a plump, chatty Patna housewife."),
+    "cut-ramesh": ("story", "3:4", "cutout", [], f"{CUTOUT} Ramesh bhai, a burly truck driver."),
+    "cut-munni": ("story", "3:4", "cutout", [], f"{CUTOUT} Munni didi, a lively banana seller."),
+    "portrait-pappu": (".", "1:1", "portrait", [], "portrait"),
+    "portrait-aunty": (".", "1:1", "portrait", [], "portrait"),
+    "portrait-ramesh": (".", "1:1", "portrait", [], "portrait"),
+    "portrait-munni": (".", "1:1", "portrait", [], "portrait"),
+
     # --- backgrounds for the cut-outs (no people)
     "bg-office": ("story", "16:9", "plate", [], f"{WIDE} A small, busy courier dispatch office in Patna: a desk with an old computer and a headset, a ceiling fan, a big map of Bihar with pins, stacked parcels, a steaming glass of chai, a hand-painted sign 'DesiDash Couriers'. No people. {REAL}"),
     "bg-radio-shop": ("story", "16:9", "plate", [], f"{WIDE} A tiny old radio repair shop on Ashok Rajpath, Patna: shelves of vintage transistor radios, tools, a soldering iron, a hand-painted sign 'Laxmi Radio Repair'. No people. {REAL}"),
     "bg-patna-street": ("story", "16:9", "plate", [], f"{WIDE} A crowded old-city street in Patna: auto-rickshaws, cycle-rickshaws, a cow, shop signs in Hindi and English, tangled overhead wires, a traffic signal. No people in the foreground. {REAL}"),
     "bg-courtyard": ("story", "16:9", "plate", [], f"{WIDE} The courtyard of Nani's village house in Muzaffarpur: a charpai, a tulsi plant, marigold garlands for a birthday, litchi trees with red fruit beyond the wall. No people. {REAL}"),
+    "bg-apartment": ("story", "16:9", "plate", [], f"{WIDE} The front door of a Patna apartment: nameplate, shoes outside, potted plants. No people. {REAL}"),
     "bg-orchard": ("story", "16:9", "plate", [], f"{WIDE} A litchi orchard in Muzaffarpur: rows of trees heavy with red Shahi litchi, a dusty lane between them, evening light. No people. {REAL}"),
 
     # --- full illustrated shots

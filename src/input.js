@@ -7,6 +7,7 @@ const KEYS = {
   Enter: 'confirm',
   Escape: 'pause', KeyP: 'pause',
   KeyM: 'mute',
+  KeyH: 'horn',
 };
 
 const SWIPE_DISTANCE = 30; // px
@@ -15,7 +16,7 @@ const DOUBLE_TAP_MS = 300;
 const UI = 'button, input, select, label, .card'; // touches here belong to the page, not the game
 
 // Turns keyboard and touch input into game actions —
-// left, right, jump, slide, flip, confirm, pause, mute, tap — and reports
+// left, right, jump, slide, flip, confirm, pause, mute, horn, tap — and reports
 // whether each came from a 'key' or a 'touch'.
 export class Input {
   constructor(onAction) {

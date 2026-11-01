@@ -107,21 +107,16 @@ ASSETS = {
                     f"reference's exact REAR-VIEW camera angle, size and framing: we see his back and the back of the bike. "
                     f"Same rendering style, {GREEN}."),
 
-    # --- 2. the opening: a drone coming down out of the sky towards Bholu (plates for the 2.5D stage)
-    "plate-aerial-high": ("plate", "16:9", ["art:story/bg-patna-street"],
-                          "A drone shot from high in the sky above old Patna on a clear afternoon, in the exact style of the "
-                          "reference: looking straight down the length of one long, busy, straight street that runs from the "
-                          "bottom centre of the picture to the horizon, lined on both sides by colourful houses with black water "
-                          "tanks on their flat roofs, trees and temple spires; the river Ganga and the long Gandhi Setu bridge on "
-                          "the horizon, blue sky with soft clouds above. The street stays in the middle third of the picture. "
-                          f"{STYLE} No text."),
-    "plate-aerial-low": ("plate", "16:9", ["plate-aerial-high", "art:story/bg-patna-street"],
-                         "The same street as the first reference, now from a drone much lower, just above the rooftops at the "
-                         "near end of the street, looking down the street ahead: the road surface clearly visible in the lower "
-                         "middle of the picture with auto-rickshaws, cycle-rickshaws and a cow walking on the road, shop signs "
-                         "and bunting along the shopfronts, rooftops with water tanks on both sides. Everything at a natural, "
-                         "consistent scale. The street stays in the middle third of the picture. Same style as the references. "
-                         f"{STYLE} No text."),
+    # --- 2. customers Bholu delivers to (made up, not from photos), in the cast's style
+    "cut-pappu": ("cutout", "3:4", ["design-bholu"], f"{CUTOUT} A NEW character, drawn in exactly the same style as the reference (not the same person): Pappu, a skinny, cheerful 18-year-old coaching-centre student from Patna with glasses, a backpack and a checked shirt, hugging a thick General Knowledge book, grinning. {STYLE}"),
+    "cut-aunty": ("cutout", "3:4", ["design-nani"], f"{CUTOUT} A NEW character, drawn in exactly the same style as the reference (not the same person): Gupta Aunty, a plump, chatty Patna housewife in her fifties in a bright floral salwar suit, holding a shiny new pressure cooker box, beaming. {STYLE}"),
+    "cut-ramesh": ("cutout", "3:4", ["design-mamu"], f"{CUTOUT} A NEW character, drawn in exactly the same style as the reference (not the same person): Ramesh bhai, a burly, friendly truck driver from Bihar in his forties with a big moustache, a vest under an open checked shirt and a towel over his shoulder, holding up a phone charger, relieved and laughing. {STYLE}"),
+    "cut-munni": ("cutout", "3:4", ["cut-pappu"], f"{CUTOUT} A NEW character, drawn in exactly the same style as the reference (not the same person): Munni didi, a lively YOUNG banana seller from Hajipur, about thirty, with glossy black hair in a plait, a green cotton sari with the end tucked in at the waist, glass bangles, holding out a banana, laughing. {STYLE}"),
+    "bg-apartment": ("plate", "16:9", ["art:story/bg-courtyard"],
+                     "In the exact style of the reference: the front door of a family flat in an old Patna apartment building in "
+                     "the afternoon: a blue wooden door with a brass nameplate reading 'GUPTA', a marigold toran over it, shoes and "
+                     "slippers outside, potted plants, a calendar, a bicycle against the wall. The lower middle of the picture is "
+                     f"an open floor where people will stand. No people. {STYLE} No other text."),
 
     # --- 2. menu key art
     "keyart": ("cover", "16:9", ["design-bholu", "design-mamu", "art:story/bg-patna-street"],

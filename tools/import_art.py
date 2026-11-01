@@ -33,7 +33,8 @@ SHEETS = {
     "sheet-elders": ((2, 1), ["cut-nani", "cut-mishra"]),
 }
 # Radio / subtitle portraits cropped from a cut-out instead of drawn separately.
-PORTRAITS = {"cut-mamu": "portrait-mamu", "cut-bholu-talk": "portrait-bholu", "cut-nani": "portrait-nani", "cut-mishra": "dispatch"}
+PORTRAITS = {"cut-mamu": "portrait-mamu", "cut-bholu-talk": "portrait-bholu", "cut-nani": "portrait-nani", "cut-mishra": "dispatch",
+             "cut-pappu": "portrait-pappu", "cut-aunty": "portrait-aunty", "cut-ramesh": "portrait-ramesh", "cut-munni": "portrait-munni"}
 
 
 def on_green(image):

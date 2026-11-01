@@ -1,4 +1,4 @@
-"""Generate the painted obstacle sprites and shopfronts with Gemini.
+"""Generate the painted obstacle sprites, shopfronts and rooftops with Gemini.
 
 Every obstacle on the track is a painted sprite in the cutscene art's 3D
 animated-film style, seen the way the chase camera sees it (from behind and a
@@ -97,6 +97,19 @@ FACADES = {
 }
 
 
+# Painted rooftops seen straight down (public/art/roofs/), for the drone's view of the old city.
+ROOF = ("A straight-down, top-down view (no perspective, like a map) of ONE flat rooftop of an old Patna house, filling "
+        "the whole picture edge to edge with nothing around it: a concrete roof with a low parapet wall along all four "
+        "edges, in the exact style of the reference: a stylised 3D animated feature film, bright cheerful colours, soft "
+        "daylight from the top left. Not photorealistic.")
+ROOFS = {
+    "rf-tank": "A round black water tank seen from above, a small stair hut, a line of colourful washing, potted plants.",
+    "rf-solar": "Two blue solar panels, a round black water tank seen from above, a plastic chair, a few potted tulsi plants.",
+    "rf-garden": "A little rooftop garden of potted plants and a creeper, a round black water tank, a charpai cot.",
+    "rf-plain": "Pale weathered concrete with water stains, a round black water tank, a satellite dish, a pile of bricks.",
+}
+
+
 def style_reference():
     image = Image.open(STYLE_REF).convert("RGB")
     image.thumbnail((1024, 1024))
@@ -142,6 +155,19 @@ def trim_margin(image):
     return image.crop((cols[0], rows[0], cols[-1] + 1, rows[-1] + 1))
 
 
+def make_roof(name):
+    print(f"{name}: generating")
+    response = gemini.request(f"models/{MODEL}:generateContent", {
+        "contents": [{"parts": [style_reference(), {"text": f"{ROOF} On it: {ROOFS[name]} No text, no watermark."}]}],
+        "generationConfig": {"responseModalities": ["IMAGE"], "imageConfig": {"aspectRatio": "1:1", "imageSize": "1K"}},
+    })
+    _, data = gemini.inline_data(response)
+    image = trim_margin(Image.open(io.BytesIO(data)).convert("RGB")).resize((512, 512), Image.LANCZOS)
+    (OUT.parent / "roofs").mkdir(exist_ok=True)
+    image.save(OUT.parent / "roofs" / f"{name}.webp", quality=85)
+    print(f"{name}: done")
+
+
 def make_facade(name):
     aspect, what = FACADES[name]
     print(f"{name}: generating")
@@ -163,10 +189,11 @@ def main():
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
-    names = args.names or [n for n in [*PROPS, *FACADES] if args.force or not (
-        (OUT / f"{n}.webp") if n in PROPS else (OUT.parent / "facades" / f"{n}.webp")).exists()]
+    where = lambda n: OUT / f"{n}.webp" if n in PROPS else OUT.parent / ("facades" if n in FACADES else "roofs") / f"{n}.webp"
+    names = args.names or [n for n in [*PROPS, *FACADES, *ROOFS] if args.force or not where(n).exists()]
+    makers = {**{n: make for n in PROPS}, **{n: make_facade for n in FACADES}, **{n: make_roof for n in ROOFS}}
     with ThreadPoolExecutor(4) as pool:
-        list(pool.map(lambda n: make(n) if n in PROPS else make_facade(n), names))
+        list(pool.map(lambda n: makers[n](n), names))
 
 
 if __name__ == "__main__":
