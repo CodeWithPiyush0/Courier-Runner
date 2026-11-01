@@ -110,6 +110,8 @@ const OBSTACLES = {
   'wall@road': sprites([
     ['ob-auto', { width: ROAD * 0.95 }], ['ob-auto', { width: ROAD * 0.95 }], ['ob-cow', { width: ROAD * 1.1 }],
     ['ob-cart', { width: ROAD * 1.05 }], ['ob-barricade', { width: ROAD * 1.0 }],
+    ['ob-truck', { width: ROAD * 1.05 }], ['ob-car', { width: ROAD * 1.0 }],
+    ['ob-bike', { width: ROAD * 0.7 }], ['ob-rickshaw', { width: ROAD * 0.95 }],
   ]),
   'low@road': sprites([['ob-bricks', { width: ROAD * 1.0 }], ['ob-cones', { width: ROAD * 0.85 }]]),
   'high@road': sprites([['ob-banner', { width: ROAD * 1.0 }], ['ob-boom', { width: ROAD * 1.0 }]]),

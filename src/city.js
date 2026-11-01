@@ -2,9 +2,10 @@ import * as THREE from 'three';
 import { TUBE_RADIUS } from './config.js';
 
 // Old Patna for the opening drone shot: a real 3D city round the start of the
-// first delivery, dressed in the painted art: every wall wears a painted
-// shopfront (public/art/facades/), every roof a painted rooftop seen from
-// above (public/art/roofs/), with a few 3D water tanks and trees for depth.
+// first delivery. Every wall wears a painted shopfront (public/art/facades/);
+// the flat roofs are clean concrete, whitewash or terracotta, with their clutter
+// built in 3D (water tanks, solar panels, washing lines, stair huts, parapets)
+// so it catches the light instead of looking painted on.
 // The gameplay street (world.js) runs down the middle; the city leaves room
 // for it, and its houses along the street further ahead are hidden once the
 // run starts (world.js builds that street itself as Bholu rides).
@@ -12,7 +13,6 @@ import { TUBE_RADIUS } from './config.js';
 
 const FLOOR = -TUBE_RADIUS;
 const FACADES = ['fa-sweets', 'fa-mobile', 'fa-chai', 'fa-cloth', 'fa-medical', 'fa-litti', 'fa-books', 'fa-tent'];
-const ROOFS = ['rf-tank', 'rf-solar', 'rf-garden', 'rf-plain'];
 const LOT = 9.6; // a house's frontage (one facade picture wide)
 const DEPTH = 12; // and how deep it is
 const LANE = 6; // lanes between blocks (give or take)
@@ -76,7 +76,29 @@ const SHADOW_STRETCH = SUN_FLAT / SUN.y; // ground shadow length per metre of he
 const SHADOW_DIR = { x: -SUN.x / SUN_FLAT, z: -SUN.z / SUN_FLAT }; // which way shadows fall
 
 const WHITE = new THREE.Color(1, 1, 1);
+const TERRACOTTA = new THREE.Color('#b8653f');
+const PLANTS = ['#4f9a3c', '#3f8a3a', '#6aa84a'].map((c) => new THREE.Color(c));
+const CLOTHES = ['#d62828', '#ffc21a', '#1f5fbf', '#ffffff', '#e05aa0', '#2e8b3a'].map((c) => new THREE.Color(c));
+
+// A barely-there concrete grain for the roofs (white, so each roof's colour shows true).
+function concreteTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, 128, 128);
+  for (let i = 0; i < 900; i++) {
+    const v = 236 + Math.floor(Math.random() * 20);
+    ctx.fillStyle = `rgb(${v},${v},${v})`;
+    ctx.fillRect(Math.random() * 128, Math.random() * 128, 2, 2);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
 const GROUND_SHADE = new THREE.Color(0.55, 0.55, 0.58); // the foot of a wall in a narrow lane
+// Roof finishes, seen from above: plain and weathered concrete, whitewash, terracotta, painted terraces.
+const ROOF_COLOURS = ['#d8d3ca', '#cbc4b8', '#e8e3da', '#c98d70', '#e2c6bb', '#bccbd0', '#d9ceb2'].map((c) => new THREE.Color(c));
 const WALL_COLOURS = ['#efe2c4', '#f2c7bd', '#cfe3c6', '#f5dc95', '#c8dbec', '#f3c99c', '#e6d3ec', '#f7b9a5'].map((c) => new THREE.Color(c));
 
 export class City {
@@ -96,15 +118,15 @@ export class City {
       return m;
     };
     this.facades = FACADES.map((name) => ({ material: material('facades', name), name }));
-    this.roofs = ROOFS.map((name) => material('roofs', name));
-    this.plain = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }); // parapets, stair huts
-    this.disposables.push(this.plain);
+    this.plain = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }); // parapets, stair huts, panels, washing
+    this.roof = new THREE.MeshStandardMaterial({ map: concreteTexture(), vertexColors: true, roughness: 1 });
+    this.disposables.push(this.plain, this.roof, this.roof.map);
     this.build(startZ, streetFrom, streetTo);
     scene.add(this.group);
   }
 
   build(z0, streetFrom, streetTo) {
-    const newSet = () => ({ walls: FACADES.map(() => new Quads()), roofs: ROOFS.map(() => new Quads()), plain: new Quads() });
+    const newSet = () => ({ walls: FACADES.map(() => new Quads()), roof: new Quads(), plain: new Quads() });
     const city = newSet();
     const ahead = newSet();
     const tanks = [];
@@ -122,13 +144,49 @@ export class City {
       const y1 = FLOOR + height;
       set.walls[f].sides(x0, y0, za, x1, y1, zb, { bottom: GROUND_SHADE });
       if (set === city) footprints.push([x0, za, x1, zb, height]);
-      set.roofs[Math.floor(Math.random() * ROOFS.length)].top(x0, y1, za, x1, zb);
+      // The roof: its finish, shaded in a soft band where the parapet keeps the sun off.
+      const finish = pick(ROOF_COLOURS);
+      const shade = finish.clone().multiplyScalar(0.8);
+      const band = 1.1;
+      set.roof.top(x0 + band, y1, za + band, x1 - band, zb - band, { bottom: finish, top: finish });
+      set.roof.top(x0, y1, za, x1, za + band, { bottom: finish, top: shade }); // (top() tints its far-z edge with `top`)
+      set.roof.top(x0, y1, zb - band, x1, zb, { bottom: shade, top: finish });
+      set.roof.add([x0, y1, zb - band], [x0 + band, y1, zb - band], [x0 + band, y1, za + band], [x0, y1, za + band], { bottom: shade, top: shade });
+      set.roof.add([x1 - band, y1, zb - band], [x1, y1, zb - band], [x1, y1, za + band], [x1 - band, y1, za + band], { bottom: shade, top: shade });
+      // The parapet: walls in the house's colour, with a pale cap along the top.
       const wall = pick(WALL_COLOURS);
+      const cap = wall.clone().lerp(WHITE, 0.55);
       const lip = 0.25; // parapet thickness
-      set.plain.sides(x0, y1, za, x1, y1 + 0.9, za + lip, { bottom: wall, top: wall });
-      set.plain.sides(x0, y1, zb - lip, x1, y1 + 0.9, zb, { bottom: wall, top: wall });
-      set.plain.sides(x0, y1, za, x0 + lip, y1 + 0.9, zb, { bottom: wall, top: wall });
-      set.plain.sides(x1 - lip, y1, za, x1, y1 + 0.9, zb, { bottom: wall, top: wall });
+      const parapet = (ax, az, bx, bz) => {
+        set.plain.sides(ax, y1, az, bx, y1 + 0.9, bz, { bottom: wall.clone().multiplyScalar(0.85), top: wall });
+        set.plain.top(ax, y1 + 0.9, az, bx, bz, { bottom: cap, top: cap });
+      };
+      parapet(x0, za, x1, za + lip);
+      parapet(x0, zb - lip, x1, zb);
+      parapet(x0, za, x0 + lip, zb);
+      parapet(x1 - lip, za, x1, zb);
+      if (set === city && Math.random() < 0.3) { // a row of potted plants along the parapet
+        const green = pick(PLANTS);
+        for (let px = x0 + 0.8; px < x1 - 0.8; px += rand(0.9, 1.6)) {
+          set.plain.sides(px, y1, za + lip, px + 0.45, y1 + 0.55, za + lip + 0.45, { bottom: TERRACOTTA, top: green });
+          set.plain.top(px, y1 + 0.55, za + lip, px + 0.45, za + lip + 0.45, { bottom: green, top: green });
+        }
+      }
+      if (set === city && Math.random() < 0.2) { // a solar panel, tilted to the sun
+        const px = rand(x0 + 1.5, x1 - 4);
+        const pz = rand(za + 1.5, zb - 3);
+        const blue = new THREE.Color('#2c4a78');
+        set.plain.add([px, y1 + 0.3, pz + 1.6], [px + 2.6, y1 + 0.3, pz + 1.6], [px + 2.6, y1 + 1.1, pz], [px, y1 + 1.1, pz], { bottom: blue, top: blue.clone().multiplyScalar(1.4) });
+      }
+      if (set === city && Math.random() < 0.18) { // a line of washing
+        const lz = rand(za + 1.5, zb - 1.5);
+        let lx = x0 + 1.2;
+        while (lx < x1 - 2) {
+          const cloth = pick(CLOTHES);
+          set.plain.add([lx, y1 + 0.7, lz], [lx + 0.9, y1 + 0.7, lz], [lx + 0.9, y1 + 1.6, lz], [lx, y1 + 1.6, lz], { bottom: cloth, top: cloth });
+          lx += 1.15;
+        }
+      }
       if (Math.random() < 0.4) { // stair hut
         const hx = rand(x0 + 1, x1 - 3.6);
         const hz = rand(za + 1, zb - 3.6);
@@ -162,7 +220,7 @@ export class City {
                 continue;
               }
               const top = house(set, x0, za + 0.15, x1, zb - 0.15);
-              if (!nearStreet && Math.random() < 0.5) tanks.push([rand(x0 + 2, x1 - 2), top, rand(za + 2, zb - 2)]);
+              if (!nearStreet && Math.random() < 0.65) tanks.push([rand(x0 + 2, x1 - 2), top, rand(za + 2, zb - 2)]);
             }
           }
         }
@@ -173,11 +231,8 @@ export class City {
       this.group.add(city.walls[i].mesh(this.facades[i].material));
       this.streetAhead.add(ahead.walls[i].mesh(this.facades[i].material));
     }
-    for (let i = 0; i < ROOFS.length; i++) {
-      this.group.add(city.roofs[i].mesh(this.roofs[i]));
-      this.streetAhead.add(ahead.roofs[i].mesh(this.roofs[i]));
-    }
-    this.group.add(city.plain.mesh(this.plain));
+    this.group.add(city.roof.mesh(this.roof), city.plain.mesh(this.plain));
+    this.streetAhead.add(ahead.roof.mesh(this.roof));
     this.streetAhead.add(ahead.plain.mesh(this.plain));
     this.group.add(this.streetAhead);
 
@@ -199,6 +254,11 @@ export class City {
     const tankGeo = new THREE.CylinderGeometry(0.75, 0.75, 1.5, 12).translate(0, 0.75, 0);
     const tankMesh = new THREE.InstancedMesh(tankGeo, new THREE.MeshStandardMaterial({ color: 0x1d1d20, roughness: 0.6 }), Math.max(1, tanks.length));
     tanks.forEach(([x, y, z], i) => tankMesh.setMatrixAt(i, new THREE.Matrix4().makeTranslation(x, y, z)));
+    const lidGeo = new THREE.CylinderGeometry(0.42, 0.5, 0.22, 12).translate(0, 1.6, 0); // the tank's ridged lid
+    const lidMesh = new THREE.InstancedMesh(lidGeo, new THREE.MeshStandardMaterial({ color: 0x3a3a40, roughness: 0.5 }), Math.max(1, tanks.length));
+    tanks.forEach(([x, y, z], i) => lidMesh.setMatrixAt(i, new THREE.Matrix4().makeTranslation(x, y, z)));
+    this.group.add(lidMesh);
+    this.disposables.push(lidGeo, lidMesh.material);
     const leafGeo = new THREE.IcosahedronGeometry(1, 1);
     const leafMesh = new THREE.InstancedMesh(leafGeo, new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true }), Math.max(1, trees.length));
     trees.forEach(([x, z, r], i) => leafMesh.setMatrixAt(i, new THREE.Matrix4().compose(

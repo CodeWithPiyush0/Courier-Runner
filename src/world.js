@@ -34,7 +34,7 @@ function canvasTexture(width, height, draw) {
 // tools/gen_props.py). Each building is as tall as its picture, so nothing stretches.
 const FACADES = ['fa-sweets', 'fa-mobile', 'fa-chai', 'fa-cloth', 'fa-medical', 'fa-litti', 'fa-books', 'fa-tent'];
 const FRONT_WIDTH = SEGMENT_LENGTH * 0.96;
-const ROOFS = ['rf-tank', 'rf-solar', 'rf-garden', 'rf-plain']; // painted rooftops (public/art/roofs/)
+const ROOF_COLOURS = ['#d8d3ca', '#cbc4b8', '#e8e3da', '#c98d70', '#e2c6bb', '#bccbd0']; // concrete, whitewash, terracotta, painted terraces
 const textureLoader = new THREE.TextureLoader();
 
 function facadeMaterial(name) {
@@ -297,10 +297,7 @@ function mesh(geometry, material, x = 0, y = 0, z = 0) {
 
 function buildMaterials() {
   const facades = FACADES.map(facadeMaterial);
-  const roofs = ROOFS.map((name) => {
-    const map = textureLoader.load(`/art/roofs/${name}.webp`, (texture) => { texture.colorSpace = THREE.SRGBColorSpace; });
-    return standard(0xffffff, { map, flatShading: false, roughness: 1 });
-  });
+  const roofs = ROOF_COLOURS.map((colour) => standard(colour, { roughness: 1 }));
   const stencil = canvasTexture(256, 256, (ctx, w, h) => {
     ctx.fillStyle = '#6f6b64'; ctx.fillRect(0, 0, w, h);
     ctx.fillStyle = 'rgba(30,25,20,0.35)';
@@ -317,7 +314,7 @@ function buildMaterials() {
     wireGeo: new THREE.CylinderGeometry(0.025, 0.025, ROAD_WIDTH + SIDEWALK * 2 + 2, 4).rotateZ(Math.PI / 2),
     backGeo: new THREE.BoxGeometry(BUILDING_DEPTH + 2, 1, SEGMENT_LENGTH * 0.45).translate(0, 0.5, 0),
     groundGeo: new THREE.PlaneGeometry(160, SEGMENT_LENGTH).rotateX(-Math.PI / 2),
-    // backWalls[storeys]: windows on every wall (they show through the gaps), a painted roof.
+    // backWalls[storeys]: windows on every wall (they show through the gaps), a plain roof.
     backWalls: Object.fromEntries([2, 3, 4, 5, 6].map((storeys) => [storeys, WALLS.map((wall, i) => {
       const texture = backFacade(wall);
       texture.repeat.set(1.5, storeys);

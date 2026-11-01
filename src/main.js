@@ -30,7 +30,7 @@ import { Tutorial } from './tutorial.js';
 import { introBeats, outroBeats, endingBeats, picturesFor } from './scenes.js';
 import {
   START_LINES, RUN_LINES, ENTER_TUNNEL_LINES, ENTER_ROAD_LINES, LOW_BATTERY_LINES, HIT_LINES, CRASH_LINES,
-  CAUGHT_LINES, DARK_LINES, POWER_LINES, SHIELD_BREAK_LINES, pick,
+  CAUGHT_LINES, DARK_LINES, POWER_LINES, SHIELD_BREAK_LINES, SOUNDBOX_LINES, STREAK_LINES, pick,
 } from './dispatch.js';
 
 const COIN_POINTS = 10;
@@ -44,6 +44,7 @@ const CHECKPOINT_EVERY = 3; // seconds of running between saves of the delivery 
 const CUTSCENE_PIXEL_RATIO = Math.min(window.devicePixelRatio, 2); // cutscenes are cheap: always full sharpness
 const ARRIVE_TIME = 1.6; // seconds to glide to a stop at the drop-off
 const GEMS_FOR_STAR = 0.6;
+const STREAK_QUIP = 12; // tips in a row before Mishra ji cheers
 
 // Fog, light and background per zone; the scene eases between them. The road
 // is a hazy Patna afternoon (the same haze as the sky's horizon, world.js); the tunnel is dark apart from Bholu's phone torch,
@@ -461,7 +462,7 @@ function afterArrival() {
   const beats = level.finale ? endingBeats() : outroBeats(level);
   if (!beats.length) return results();
   state = 'cinematic';
-  cinematic.play(beats, { anchor: floorPoint, player, inTunnel, onDone: results });
+  cinematic.play(beats, { anchor: floorPoint, player, inTunnel, onMusic: (name) => sound.playMusic(name), onDone: results });
 }
 
 // Through a tunnel mouth: down into a shortcut, or back out onto the road.
@@ -529,8 +530,13 @@ function handleHit(item) {
 function collectPower(type) {
   powers.activate(type);
   if (type === 'boost') chaser.backOff();
-  sound.play(type === 'boost' ? 'boost' : 'power');
   sound.buzz(20);
+  if (type === 'magnet') { // UPI: the soundbox goes "ting-ting!" and reads the payment out
+    sound.play('payment');
+    hud.say(pick(SOUNDBOX_LINES), { who: 'soundbox', delay: 0.7 });
+    return;
+  }
+  sound.play(type === 'boost' ? 'boost' : 'power');
   hud.say(pick(POWER_LINES[type]), { priority: 'low' });
 }
 
@@ -542,6 +548,7 @@ function collectCoins(count) {
   coinStreak = runTime - lastCoinTime < 0.6 ? coinStreak + count : 0;
   lastCoinTime = runTime;
   sound.play('coin', { step: coinStreak });
+  if (coinStreak >= STREAK_QUIP && coinStreak - count < STREAK_QUIP) hud.say(pick(STREAK_LINES), { priority: 'low' });
   bursts.spawn(playerPoint().add(new THREE.Vector3(0, 0.6, -0.6)), { color: 0xffd23d, count: 14, speed: 4, size: 0.14, life: 0.45 });
   coinCounter.classList.remove('bump');
   void coinCounter.offsetWidth; // restart the animation

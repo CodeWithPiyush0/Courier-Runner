@@ -20,6 +20,7 @@ export const CHARACTERS = {
   aunty: { name: 'Gupta Aunty · Customer', portrait: '/art/portrait-aunty.webp' },
   ramesh: { name: 'Ramesh bhai · Customer', portrait: '/art/portrait-ramesh.webp' },
   munni: { name: 'Munni didi · Customer', portrait: '/art/portrait-munni.webp' },
+  soundbox: { name: 'UPI Soundbox', portrait: '/art/icon-magnet.webp' },
 };
 
 // Each delivery is a level. `zones` is the route: a list of [zone, metres], and
@@ -135,7 +136,7 @@ export const ENDING = [
   { who: 'mamu', shot: 'reveal', text: "Got you finally, scooter wale! Signal jumping, five hundred rupees." },
   { who: 'bholu', shot: 'yard-shock', text: "Mamu?! You chased me all the way from Patna?" },
   { who: 'mamu', shot: 'mamu-laugh', text: "Of course! I was coming home for Amma's birthday too. You just wouldn't stop!" },
-  { who: 'nani', shot: 'radio-party', text: "Arre, both of you, sit! The radio is playing our old song." },
+  { who: 'nani', shot: 'radio-party', text: "Arre, both of you, sit! The radio is playing our old song.", music: 'radio' },
   { who: 'mamu', shot: 'litchi', text: "Here. Challan cancelled. Have some Shahi litchi instead." },
   { who: 'dispatch', shot: 'dispatch-close', text: "Delivery confirmed. Five stars! And Bholu, tell your Mamu we need escorts like him." },
   { who: 'bholu', shot: 'yard-wave', text: "Happy birthday, Nani! And Mamu, next time I follow the rules. Promise!" },

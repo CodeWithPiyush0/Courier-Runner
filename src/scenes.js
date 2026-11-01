@@ -26,7 +26,8 @@ export const STAGE_SHOTS = {
   setu: { bg: 'plate-setu', move: 'truck-left', caption: 'Mahatma Gandhi Setu · over the Ganga' },
   haat: { bg: 'plate-haat', move: 'truck-right', caption: 'Hajipur · banana market' },
   nani: { bg: 'bg-courtyard', cast: [{ img: 'cut-nani', side: 'right' }], move: 'truck-left', caption: 'Muzaffarpur · Nani ka ghar' },
-  doorstep: { bg: 'bg-courtyard', cast: [{ img: 'cut-bholu-give', side: 'left' }, { img: 'cut-nani-welcome', side: 'right' }], move: 'push', caption: 'Nani ka ghar · Delivery point' },
+  // Nani reaches out towards Bholu, who holds the parcel out towards her.
+  doorstep: { bg: 'bg-courtyard', cast: [{ img: 'cut-nani-welcome', side: 'left', bleed: true }, { img: 'cut-bholu-give', side: 'right', bleed: true }], move: 'push', caption: 'Nani ka ghar · Delivery point' },
   reveal: { bg: 'bg-courtyard', cast: [{ img: 'cut-bholu-shock', side: 'left' }, { img: 'cut-mamu', side: 'right' }], move: 'push-fast' },
   'yard-shock': { bg: 'bg-courtyard', cast: [{ img: 'cut-bholu-shock', side: 'left' }], move: 'push-fast' },
   'mamu-laugh': { bg: 'bg-courtyard', cast: [{ img: 'cut-mamu-laugh', side: 'right' }], move: 'truck-left' },
@@ -82,7 +83,7 @@ export function introBeats(level) {
         points: [[0, 46, 80], [0, 33, 58], [0, 18, 38], [0, 7.5, 21], [0, 3.2, 9]],
         looks: [[0, 0, -120], [0, 1, -90], [0, 2, -60], [0, 2, -28], [0, 1.3, -3]],
       }),
-      duration: 7, wide: true, caption: PROLOGUE_CAPTION,
+      duration: 11, wide: true, caption: PROLOGUE_CAPTION, // slow, so the rooftops can be taken in
     });
   }
   return [...beats, ...lineBeats(level.intro), intoTheRun(level)];

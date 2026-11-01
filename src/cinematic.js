@@ -62,8 +62,10 @@ export class Cinematic {
 
   // anchor: () => Vector3 floor point under Bholu. player: for his pose.
   // inTunnel: () => whether he's in a tunnel (the camera then stays inside it).
-  play(beats, { anchor, player, inTunnel = () => false, onDone = () => {} }) {
+  // onMusic: (track) => change the music, for a line that asks for it (`music`).
+  play(beats, { anchor, player, inTunnel = () => false, onMusic = () => {}, onDone = () => {} }) {
     this.beats = beats;
+    this.onMusic = onMusic;
     this.anchor = anchor;
     this.inTunnel = inTunnel;
     this.player = player;
@@ -107,6 +109,7 @@ export class Cinematic {
       this.titleCard.classList.add('hidden');
     }
 
+    if (beat.line?.music) this.onMusic(beat.line.music);
     if (beat.line) {
       const who = CHARACTERS[beat.line.who];
       this.bubble.innerHTML = `

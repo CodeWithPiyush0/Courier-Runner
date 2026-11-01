@@ -3,7 +3,8 @@ import * as THREE from 'three';
 const FOV = 40;
 const BG_DEPTH = 14; // background plate distance from the camera
 const CAST_DEPTH = 6; // character cut-outs
-const CAST_SINK = 0.45; // how far a cut-out's bottom edge sits below the frame (camera moves never reveal it)
+const CAST_SINK = 0.22; // how far a cut-out's bottom edge sits below the frame (camera moves never reveal it)
+const CAST_MARGIN = 0.03; // and a little more (fraction of the view's width) inside the frame's sides
 const COVER = 1.22; // background bigger than the view, so camera moves never show its edge
 // Which character each cut-out shows (to know who is speaking).
 const WHO = { bholu: 'bholu', mishra: 'dispatch', nani: 'nani', mamu: 'mamu', pappu: 'pappu', aunty: 'aunty', ramesh: 'ramesh', munni: 'munni' };
@@ -13,10 +14,11 @@ const ease = (t) => t * t * (3 - 2 * t);
 // Camera moves: (t 0..1) => { x, y, z, roll } offsets from the resting camera.
 // Because the layers sit at different depths, every move gives real parallax.
 const MOVES = {
-  push: (t) => ({ x: 0, y: 0.05 * t, z: -1.2 * ease(t) }),
-  'push-fast': (t) => ({ x: 0, y: 0, z: -2 * ease(Math.min(1, t * 1.6)) }),
-  'truck-right': (t) => ({ x: -0.9 + 1.8 * ease(t), y: 0, z: -0.3 * t }),
-  'truck-left': (t) => ({ x: 0.9 - 1.8 * ease(t), y: 0, z: -0.3 * t }),
+  // Gentle enough that a character standing by the frame's edge keeps their hands in shot.
+  push: (t) => ({ x: 0, y: 0.05 * t, z: -0.7 * ease(t) }),
+  'push-fast': (t) => ({ x: 0, y: 0, z: -1.1 * ease(Math.min(1, t * 1.6)) }),
+  'truck-right': (t) => ({ x: -0.5 + 1 * ease(t), y: 0, z: -0.3 * t }),
+  'truck-left': (t) => ({ x: 0.5 - 1 * ease(t), y: 0, z: -0.3 * t }),
   rise: (t) => ({ x: 0, y: 0.6 * ease(t), z: -0.6 * t }), // only upwards: below rest, a cut-out's waist would show
   drift: (t) => ({ x: 0.5 * Math.sin(t * 2.2), y: 0.15 * Math.sin(t * 3.1), z: -0.5 * t, roll: 0.01 * Math.sin(t * 2) }),
 };
@@ -62,7 +64,7 @@ export class Stage {
     await Promise.all(names.map((name) => this.texture(name)));
   }
 
-  // Compose a shot: { bg, cast: [{ img, side }], move, tint }.
+  // Compose a shot: { bg, cast: [{ img, side, bleed }], move, tint }.
   // `speaker` is who is talking (they bob with the voice; the speech bubble points at them).
   async show(shot, speaker) {
     this.shot = shot;
@@ -95,6 +97,13 @@ export class Stage {
 
     const v = view(CAST_DEPTH);
     const portrait = aspect < 0.9;
+    let zoom = 1;
+    let slide = 0;
+    for (let t = 0; t <= 1; t += 0.1) { // how far this shot's camera move pushes in and slides
+      const m = (MOVES[shot.move] ?? MOVES.push)(t);
+      zoom = Math.max(zoom, CAST_DEPTH / (CAST_DEPTH + m.z));
+      slide = Math.max(slide, Math.abs(m.x));
+    }
     // A tall phone screen only has room for one: the speaker, if they're in the shot.
     let cast = shot.cast ?? [];
     if (portrait && cast.length > 1) cast = [cast.find((m) => whoIs(m.img) === speaker) ?? cast[0]];
@@ -102,13 +111,20 @@ export class Stage {
       const texture = await this.texture(member.img);
       if (!texture || shot !== this.shot) continue;
       const imageAspect = texture.image.width / texture.image.height;
-      let height = v.height * (portrait ? 0.78 : 0.86);
-      height = Math.min(height, (v.width * 0.9) / imageAspect);
+      let height = v.height * (portrait ? 0.74 : 0.8);
+      height = Math.min(height, (v.width * (1 - CAST_MARGIN * 2)) / imageAspect);
       const width = height * imageAspect;
       const geometry = new THREE.PlaneGeometry(width, height).translate(0, height / 2, 0); // origin at the bottom
       const plane = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ map: texture, transparent: true, alphaTest: 0.02 }));
       const side = portrait ? 0 : { left: -0.24, right: 0.24, centre: 0 }[member.side ?? 'centre'];
-      plane.position.set(side * v.width, -v.height / 2 - CAST_SINK, -CAST_DEPTH); // waist well below the frame
+      // Keep the whole cut-out in frame for the whole camera move: the move
+      // zooms in by up to `zoom` and slides up to `slide` sideways.
+      const reach = (v.width / 2 - slide) / zoom - width / 2 - v.width * CAST_MARGIN;
+      let x = Math.max(-Math.max(0, reach), Math.min(Math.max(0, reach), side * v.width));
+      // A cut-out whose picture ends in a straight edge on its outer side (its back) "bleeds"
+      // off that side of the frame, as a film frame would crop someone standing at its edge.
+      if (member.bleed && !portrait) x = Math.sign(side) * (v.width / 2 - width / 2 + v.width * 0.04);
+      plane.position.set(x, -v.height / 2 - CAST_SINK, -CAST_DEPTH); // waist just below the frame
       plane.side = portrait ? 'centre' : member.side ?? 'centre';
       plane.size = { width, height };
       this.group.add(plane);

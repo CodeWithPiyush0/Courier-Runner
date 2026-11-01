@@ -48,6 +48,7 @@ SPEAKERS = {
     "aunty": {"voice": "Sulafat", "language": "en-IN", "indian": True},
     "ramesh": {"voice": "Algenib", "language": "en-IN", "indian": True},
     "munni": {"voice": "Laomedeia", "language": "en-IN", "indian": True},
+    "soundbox": {"voice": "Kore", "language": "hi-IN", "indian": False},  # a UPI payment soundbox
 }
 FOLDERS = {"dispatch": "mishra"}  # public/vo/<folder>/ per character (Dispatch is Mishra ji)
 # Words that only turn up in a take if the model spoke a direction aloud.
@@ -71,6 +72,7 @@ def script_lines():
         "for (const level of s.LEVELS) for (const l of [...level.intro, ...level.outro]) out.set(l.text, l.who);"
         "for (const t of d.HIT_LINES) out.set(t, 'mamu');"
         "for (const t of d.LOW_BATTERY_LINES) out.set(t, 'bholu');"
+        "for (const t of d.SOUNDBOX_LINES) out.set(t, 'soundbox');"
         "for (const l of s.ENDING) out.set(l.text, l.who);"
         "console.log(JSON.stringify([...out].map(([text, who]) => [who, text])));"
     )

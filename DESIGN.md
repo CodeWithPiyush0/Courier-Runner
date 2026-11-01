@@ -121,12 +121,14 @@ channels. Harder ones unlock with distance.
 
 ## Opening and dialogue
 Delivery 1 opens with a real 3D drone shot: high over old Patna (`city.js`,
-blocks of uneven houses wearing the painted shopfronts on every wall and
-painted rooftops seen from above, with parapets, stair huts, 3D water tanks and
-trees, walls darkening towards the lanes, and sun shadows baked onto the ground;
+blocks of uneven houses wearing the painted shopfronts on every wall, clean
+flat roofs (concrete, whitewash, terracotta) with their clutter in 3D (parapets,
+stair huts, water tanks, solar panels, washing lines), trees, walls darkening towards the lanes, and sun shadows baked onto the ground;
 the shot gets a strong side sun and soft fill), the camera flies down
 the street and comes down behind Bholu in one continuous move. 3D camera moves
-always stay behind him (his sprites are painted from behind). Story pictures fill the screen (no particles). Lines show in a comic-book speech
+always stay behind him (his sprites are painted from behind). Story pictures fill the screen (no particles); characters stay fully in frame
+for the whole camera move, and pictures with a straight outer edge bleed off the
+frame's side. Lines show in a comic-book speech
 bubble beside the speaker's face (never over a face), gliding smoothly with the
 camera rather than jiggling with the character (or with a portrait at the top when they
 aren't in the picture); letterbox bars appear only for 3D camera shots.
@@ -134,7 +136,8 @@ aren't in the picture); letterbox bars appear only for 3D camera shots.
 ## Obstacles
 Painted sprites in the cutscenes' animated style (`tools/gen_props.py`,
 `public/art/props/`), seen as the chase camera sees them, sized to fill a
-lane: crash into an auto, a side-on cow, a banana cart or a barricade; jump
+lane: crash into an auto, a painted Bihar truck, a car, a motorbike, a
+cycle-rickshaw, a side-on cow, a banana cart or a barricade; jump
 bricks or cones; duck a banner or a boom barrier. In tunnels: a junk heap, a
 rusty pipe, hanging cables. The camera sits high enough (4.8 m) that the lane
 ahead shows over Bholu's helmet. The street's front buildings wear painted
@@ -145,6 +148,14 @@ Open the game with `?dev=1` in the address bar (and only then) for a DEV panel:
 invincible (on by default), game speed ×1/×2/×4, next zone, finish the
 delivery, skip the cutscene, start any delivery, the ending, or Endless. It
 never changes saved progress. `window.game` is available in the console too.
+
+## Sound touches
+- Grabbing the UPI magnet plays a soundbox-style "payment received" bell chime and the soundbox voice
+  ("UPI par sau rupaye prapt hue!").
+- When Nani says the radio is playing their old song, `public/music/radio-song.mp3`
+  starts (supplied by the developer, trimmed to start at 0:06; the original is
+  kept in `private/music/`), filtered to sound like it comes out of an old radio.
+  All music ducks to 30% under any voice.
 
 ## Coins and horns
 Coins are big glowing gold ₹ coins with a halo and a twinkle, bobbing as they

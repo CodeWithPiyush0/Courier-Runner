@@ -1,4 +1,4 @@
-"""Generate the painted obstacle sprites, shopfronts and rooftops with Gemini.
+"""Generate the painted obstacle sprites and shopfronts with Gemini.
 
 Every obstacle on the track is a painted sprite in the cutscene art's 3D
 animated-film style, seen the way the chase camera sees it (from behind and a
@@ -49,6 +49,15 @@ PROPS = {
                "Clearly a cow at a glance."),
     "ob-cart": ("4:3", f"A wooden fruit handcart (thela) piled high with yellow bananas and green coconuts, two big "
                 f"wooden wheels, seen from its back end. {BEHIND}"),
+    "ob-truck": ("4:5", f"The back of a colourful Bihar goods truck, hand-painted in Indian truck art (bright flowers, "
+                 f"peacocks, a pair of eyes, a black tassel hanging from the bumper) with NO lettering or words anywhere, a wooden "
+                 f"tailgate, tail lights. {BEHIND}"),
+    "ob-car": ("4:3", f"The back of a small white Indian hatchback car, a little dusty, with red tail lights and a number "
+               f"plate without readable text. {BEHIND}"),
+    "ob-bike": ("3:4", f"A man in a checked shirt riding a black Indian motorbike, with a sack of vegetables tied behind "
+                f"the seat, seen from behind. {BEHIND}"),
+    "ob-rickshaw": ("3:4", f"A cycle-rickshaw with its colourful folded hood and a fringe of tassels, a rickshaw-wallah "
+                    f"pedalling, seen from behind. {BEHIND}"),
     "ob-barricade": ("4:3", "A yellow-and-black striped metal police barricade standing across the road, with two "
                      "red warning lamps on top, seen from the front."),
     # --- road: jump over (low, about knee high)
@@ -97,19 +106,6 @@ FACADES = {
 }
 
 
-# Painted rooftops seen straight down (public/art/roofs/), for the drone's view of the old city.
-ROOF = ("A straight-down, top-down view (no perspective, like a map) of ONE flat rooftop of an old Patna house, filling "
-        "the whole picture edge to edge with nothing around it: a concrete roof with a low parapet wall along all four "
-        "edges, in the exact style of the reference: a stylised 3D animated feature film, bright cheerful colours, soft "
-        "daylight from the top left. Not photorealistic.")
-ROOFS = {
-    "rf-tank": "A round black water tank seen from above, a small stair hut, a line of colourful washing, potted plants.",
-    "rf-solar": "Two blue solar panels, a round black water tank seen from above, a plastic chair, a few potted tulsi plants.",
-    "rf-garden": "A little rooftop garden of potted plants and a creeper, a round black water tank, a charpai cot.",
-    "rf-plain": "Pale weathered concrete with water stains, a round black water tank, a satellite dish, a pile of bricks.",
-}
-
-
 def style_reference():
     image = Image.open(STYLE_REF).convert("RGB")
     image.thumbnail((1024, 1024))
@@ -155,19 +151,6 @@ def trim_margin(image):
     return image.crop((cols[0], rows[0], cols[-1] + 1, rows[-1] + 1))
 
 
-def make_roof(name):
-    print(f"{name}: generating")
-    response = gemini.request(f"models/{MODEL}:generateContent", {
-        "contents": [{"parts": [style_reference(), {"text": f"{ROOF} On it: {ROOFS[name]} No text, no watermark."}]}],
-        "generationConfig": {"responseModalities": ["IMAGE"], "imageConfig": {"aspectRatio": "1:1", "imageSize": "1K"}},
-    })
-    _, data = gemini.inline_data(response)
-    image = trim_margin(Image.open(io.BytesIO(data)).convert("RGB")).resize((512, 512), Image.LANCZOS)
-    (OUT.parent / "roofs").mkdir(exist_ok=True)
-    image.save(OUT.parent / "roofs" / f"{name}.webp", quality=85)
-    print(f"{name}: done")
-
-
 def make_facade(name):
     aspect, what = FACADES[name]
     print(f"{name}: generating")
@@ -189,9 +172,9 @@ def main():
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
-    where = lambda n: OUT / f"{n}.webp" if n in PROPS else OUT.parent / ("facades" if n in FACADES else "roofs") / f"{n}.webp"
-    names = args.names or [n for n in [*PROPS, *FACADES, *ROOFS] if args.force or not where(n).exists()]
-    makers = {**{n: make for n in PROPS}, **{n: make_facade for n in FACADES}, **{n: make_roof for n in ROOFS}}
+    where = lambda n: OUT / f"{n}.webp" if n in PROPS else OUT.parent / "facades" / f"{n}.webp"
+    names = args.names or [n for n in [*PROPS, *FACADES] if args.force or not where(n).exists()]
+    makers = {**{n: make for n in PROPS}, **{n: make_facade for n in FACADES}}
     with ThreadPoolExecutor(4) as pool:
         list(pool.map(lambda n: makers[n](n), names))
 

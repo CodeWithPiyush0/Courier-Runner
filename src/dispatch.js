@@ -16,12 +16,19 @@ export const RUN_LINES = {
     "Reminder: parcel is marked FRAGILE. Handle with care, ya.",
     "Auto-wala is honking at you. Honk back, it's polite here.",
     "Traffic is so bad, even the pigeons are walking.",
+    "A cow is reading the traffic signal. Even she follows rules more than you.",
+    "Fun fact: in Patna, the horn is also the brake.",
+    "Customer review just came in: 'Delivery boy faster than my internet.'",
+    "Mishra ji here. My chai is getting cold just watching you drive.",
+    "That auto-wala just asked if you want to race. Please say no.",
   ],
   tunnel: [
     "Shortcut, very good. Smell, very bad. Keep going!",
     "Don't touch the walls. Patna Nagar Nigam has not cleaned them since 1998.",
     "Torch on, Bholu. Even the rats here need directions.",
     "Great echo in there. Sing something, the customer likes music.",
+    "If you see a rat wearing a helmet, that is Mamu's cousin. Keep going.",
+    "Torch on, phone on, brain on. Two out of three is fine.",
   ],
 };
 
@@ -49,6 +56,8 @@ export const HIT_LINES = [
   "One more rule broken and I'll catch you!",
   "Helmet is fine, driving is not! Stop!",
   "Signal is red, hero! Red!",
+  "Overtaking from the left? Even my bike is shocked!",
+  "I have a challan book thicker than your parcel!",
 ];
 
 export const CRASH_LINES = {
@@ -57,6 +66,7 @@ export const CRASH_LINES = {
     "Parcel status: slightly flattened. Customer gave one star, yaar.",
     "No problem. We'll tell the customer it's 'out for delivery'.",
     "Hello? Bholu? ... Okay, sending the next courier.",
+    "Don't worry, the cow is fine. The cow is always fine.",
   ],
   tunnel: [
     "That was a pipe, Bholu. Pipes have been there longer than you.",
@@ -84,6 +94,19 @@ export const POWER_LINES = {
   shield: ["Helmet on! Now you can be careless for a bit.", "Extra helmet! Safety first, then speed."],
   boost: ["Cutting chai! Full power!", "One chai, and he's off! Customer will be so happy."],
 };
+
+// The UPI soundbox, when Bholu grabs the UPI magnet (after its "ting-ting").
+export const SOUNDBOX_LINES = [
+  "UPI par sau rupaye prapt hue!",
+  "UPI par tip prapt hui!",
+];
+
+// When the tips come in a long streak.
+export const STREAK_LINES = [
+  "Wah! Tips are raining like monsoon!",
+  "So many tips! Mishra ji is already counting his commission.",
+  "Bholu, at this rate you will buy your own auto!",
+];
 
 export const SHIELD_BREAK_LINES = [
   "Helmet cracked! That one's coming out of your salary.",

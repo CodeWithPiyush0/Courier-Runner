@@ -5,9 +5,13 @@ const MUSIC = {
   menu: ['music/menu.mp3'],
   road: ['music/road.mp3'],
   tunnel: ['music/tunnel.mp3'],
+  // The old song on Nani's radio at the end (you add the file: public/music/radio-song.mp3).
+  radio: ['music/radio-song.mp3'],
 };
+// Tracks that play "through a radio": a warm, slightly tinny band of frequencies.
+const RADIO_TRACKS = new Set(['radio']);
 const MUSIC_LEVEL = 0.7; // music sits a little under the effects and voice
-const VOICE_DUCK = 0.45; // music level while Dispatch is talking
+const VOICE_DUCK = 0.3; // music level while someone is talking (so the words always come through)
 const PAUSE_DUCK = 0.35;
 
 // All game audio: streamed music with crossfades, synthesized sound effects,
@@ -107,7 +111,15 @@ export class Sound {
       }
       const gain = this.ctx.createGain();
       gain.gain.value = 0;
-      this.ctx.createMediaElementSource(el).connect(gain).connect(this.musicBus);
+      let source = this.ctx.createMediaElementSource(el);
+      if (RADIO_TRACKS.has(name)) {
+        const band = this.ctx.createBiquadFilter();
+        band.type = 'bandpass';
+        band.frequency.value = 1500;
+        band.Q.value = 0.55;
+        source = source.connect(band);
+      }
+      source.connect(gain).connect(this.musicBus);
       track = { el, gain };
       this.tracks[name] = track;
     }
@@ -269,6 +281,17 @@ export class Sound {
         this.tone({ from: 3136 * pitch, duration: 0.18, volume: 0.05, delay: 0.06 });
         this.noise({ filter: 'highpass', from: 6000, to: 9000, duration: 0.12, volume: 0.04, delay: 0.05 });
         break;
+      case 'payment': { // a UPI soundbox's "payment received": bell notes climbing a major chord, ringing out on top
+        const bell = (f, delay, length, volume) => {
+          this.tone({ from: f, duration: length, volume, delay });
+          this.tone({ from: f * 2.76, duration: length * 0.35, volume: volume * 0.28, delay }); // the bell's metallic overtone
+          this.tone({ from: f * 5.4, duration: length * 0.15, volume: volume * 0.1, delay });
+        };
+        [[1319, 0], [1661, 0.085], [1976, 0.17]].forEach(([f, d]) => bell(f, d, 0.35, 0.1));
+        bell(2637, 0.255, 1.1, 0.14);
+        bell(2637, 0.4, 0.9, 0.035); // a soft echo, like the soundbox's little speaker
+        break;
+      }
       case 'horn': // Bholu's scooter: a cheeky double "peep-peep"
         for (const delay of [0, 0.2]) {
           this.tone({ type: 'square', from: 415, duration: 0.15, volume: 0.07, lowpass: 2200, hold: true, delay });
