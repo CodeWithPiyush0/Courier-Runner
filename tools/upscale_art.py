@@ -37,7 +37,7 @@ PROMPT = ("Redraw this exact image at high resolution with crisp, sharp detail. 
 def targets():
     files = [p for p in (ART / "sprites").glob("*.webp") if p.stem != "camera-guide"]
     files += sorted((ART / "story").glob("*.webp"))
-    files += [ART / f"{n}.webp" for n in ("portrait-riya", "portrait-nani", "portrait-security", "dispatch")]
+    files += [ART / f"{n}.webp" for n in ("portrait-bholu", "portrait-nani", "portrait-security", "dispatch")]
     return [p for p in files if "-mouth" not in p.stem]
 
 

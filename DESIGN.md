@@ -4,18 +4,23 @@ A 2.5D endless runner in the browser (Three.js), set in real-world Bihar. Funny,
 warm tone. Voice lines in Indian English with a Bihari flavour.
 
 ## Story — "Nani's Radio"
-**Riya**, 19, grew up in Muzaffarpur and rides a scooter for a delivery app in
-Patna. Mishra ji at Dispatch hands her an urgent parcel from Laxmi Radio Repair:
-Nani's old radio, fixed in time for her birthday, to be delivered to "Nani,
-Litchi Bagan, Muzaffarpur" by evening. Riya jumps a signal on the way, and a
-traffic cop ("Mamu", as everyone in Bihar calls the police) chases her the
-whole 75 km. Twist: at Nani's door he takes off his helmet. He really is her
-Mamu, Nani's son, coming home for the birthday too. He cancels the challan and
-hands round Shahi litchi; Riya promises to wear her helmet.
+**Bholu**, a young man who grew up in Muzaffarpur, rides a scooter for a delivery
+app in Patna. Mishra ji at Dispatch hands him an urgent parcel from Laxmi Radio
+Repair: Nani's old radio, fixed in time for her birthday, to be delivered to
+"Nani, Litchi Bagan, Muzaffarpur" by evening. Bholu jumps a signal on the way,
+and a traffic cop ("Mamu", as everyone in Bihar calls the police) chases him
+the whole 75 km. Twist: at Nani's door he takes off his helmet. He really is
+Bholu's Mamu, Nani's son, coming home for the birthday too. He cancels the
+challan and hands round Shahi litchi; Bholu promises to follow the rules.
 
-**Look:** Riya in a helmet with stickers, long braid, courier jacket, on a
-scooter decorated like a Bihar truck ("HORN OK PLEASE"), parcel box strapped
-behind. All story text lives in `src/story.js`.
+**The cast is the developer's family**, drawn as stylised 3D animated
+characters inspired by their photos (familiar but not portraits): Bholu (the
+developer), Nani (his Dadi), Mamu, Mishra ji. The photos live in `private/`,
+which is git-ignored and never deployed; `tools/gen_cast.py` makes a character
+design per person, then every picture of them from that design.
+
+**Look:** Bholu in a saffron helmet with stickers, a teal courier jacket and a
+red-and-white gamchha, on a mint-green scooter with the parcel box behind. All story text lives in `src/story.js`.
 
 ## Deliveries (levels)
 | # | Title | Route (metres) | New here |
@@ -44,11 +49,11 @@ confirmation) wipes everything.
 
 Tunnel mouths are signposted portals (शॉर्टकट / NALA SHORTCUT →, and BACK ON
 THE ROAD / सड़क →). At a mouth the world blends smoothly between road and tube,
-and before an exit Riya settles back to the floor.
+and before an exit Bholu settles back to the floor.
 
-**Torch battery:** the tunnel is lit only by Riya's phone torch. It drains in
+**Torch battery:** the tunnel is lit only by Bholu's phone torch. It drains in
 ~22 s; each battery pickup adds 12 %. As it runs down the light and view
-distance shrink, and below 30 % it beeps and Riya complains. Empty = stuck in
+distance shrink, and below 30 % it beeps and Bholu complains. Empty = stuck in
 the dark (run over). Back on the road it refills.
 
 ## Core loop
@@ -86,7 +91,7 @@ lead-in to find the gap). Tunnel: scatter, crossing rings, spirals, checker,
 channels. Harder ones unlock with distance.
 
 ## Look: 2.5D
-- **In play**, the street, tunnels, obstacles and pickups are 3D; Riya and Mamu
+- **In play**, the street, tunnels, obstacles and pickups are 3D; Bholu and Mamu
   are painted Gemini sprites on camera-facing planes, with a sprite per pose
   (ride, lean left/right, jump, slide, hit, cheer), squash-and-stretch, a
   barrel-roll flip and a hit flash. (`rider.js`, `chaser.js`)
@@ -95,10 +100,6 @@ channels. Harder ones unlock with distance.
   plates for the big moments, captions and a painted title card. Delivery 1
   opens with 3D shots over Patna rooftops and a rush down the street.
   (`stage.js`, `scenes.js`, `cinematic.js`)
-- **Mouths** flap with the loudness of the speaker's voice: Gemini redraws each
-  cut-out with its mouth open, and `tools/mouth_flaps.py` aligns that frame and
-  keeps a soft patch round the mouth (positions are measured in that file;
-  re-measure if a cut-out is redrawn).
 - **Sharpness:** painted art is generated at 2K and cutscenes always render at
   full screen resolution.
 - **Voices** are fetched and decoded before a delivery starts, so they start
@@ -106,11 +107,11 @@ channels. Harder ones unlock with distance.
   cuts off an important line.
 
 ## Opening and dialogue
-Delivery 1 opens with a drone shot: it circles old Patna once (`city.js`, a
-procedural city built round the start: painted houses with water tanks and
-stair huts, trees, traffic, Golghar, a temple, a mosque, Gandhi Maidan, the
-Ganga and Gandhi Setu), then dives into Ashok Rajpath and races along the
-shopfronts to Riya. Story pictures fill the screen. Lines show in a speech
+Delivery 1 opens high in the sky: two painted drone views of old Patna (the
+street running to the Ganga and Gandhi Setu, then rooftop height) sink towards
+the street, and the 3D camera comes down behind Bholu. 3D camera moves always
+stay behind him (his sprites are painted from behind) and never look down on
+the 3D rooftops. Story pictures fill the screen. Lines show in a speech
 bubble beside the speaker's face (or with a portrait at the top when they
 aren't in the picture); letterbox bars appear only for 3D camera shots.
 
@@ -120,7 +121,8 @@ Painted sprites in the cutscenes' animated style (`tools/gen_props.py`,
 lane: crash into an auto, a side-on cow, a banana cart or a barricade; jump
 bricks or cones; duck a banner or a boom barrier. In tunnels: a junk heap, a
 rusty pipe, hanging cables. The camera sits high enough (4.8 m) that the lane
-ahead shows over Riya's helmet.
+ahead shows over Bholu's helmet. The street's front buildings wear painted
+shopfronts (`public/art/facades/`, `tools/gen_props.py`), each as tall as its picture.
 
 ## Tutorial
 When a lesson obstacle is close, time nearly stops and a gesture (touch) or
@@ -147,7 +149,7 @@ ChatGPT whose results `python tools/import_art.py art-requests/out` imports.
 - **UI art** — `npm run art` (`tools/gen_images.py`): key art (wide + tall),
   icons (₹ coin, UPI, helmet, chai, battery), emblem, favicon.
 - **Voices** — `npm run voice` (`tools/gen_voice.py`): Gemini TTS per character
-  (Dispatch, Riya, Nani, Mamu), each take transcribed and checked for words and
+  (Dispatch, Bholu, Nani, Mamu), each take transcribed and checked for words and
   accent. Rerun after editing lines to voice only the new ones.
 - **Music** — `npm run music` (`tools/gen_music.py`): menu, road and tunnel
   tracks with dhol / dholak and Bhojpuri folk-pop flavour. Crossfades at tunnel

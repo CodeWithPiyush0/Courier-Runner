@@ -8,7 +8,7 @@ run this again to voice only the new lines.
 
     python tools/gen_voice.py                 # voice missing lines
     python tools/gen_voice.py --force         # redo everything
-    python tools/gen_voice.py --only riya     # just one character
+    python tools/gen_voice.py --only bholu     # just one character
     python tools/gen_voice.py --recheck       # re-verify existing takes, redo bad ones
     python tools/gen_voice.py --limit 1       # quick test
 """
@@ -27,7 +27,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import gemini  # noqa: E402
 
-sys.stdout.reconfigure(line_buffering=True)  # show progress live when piped to a log
+sys.stdout.reconfigure(encoding="utf-8", line_buffering=True)  # live progress in a log; transcripts may hold Devanagari
 
 MODEL = "gemini-3.8-flash-tts"
 CHECK_MODEL = "gemini-3.8-flash"
@@ -37,10 +37,10 @@ CHECK_MODEL = "gemini-3.8-flash"
 # checked: the tags must not be spoken, the words must roughly match the script,
 # and (where `indian` is set) the accent should sound Indian. The word match is
 # loose on purpose: the transcriber writes the Indian pronunciation of e.g.
-# "courier" as "Koriya", which is the accent working.
+# "courier" as "Kobholu", which is the accent working.
 SPEAKERS = {
     "dispatch": {"voice": "Puck", "tags": "[cheerful] [Indian English accent]", "language": "en-IN", "indian": True},
-    "riya": {"voice": "Leda", "tags": "[energetic] [young woman] [Indian English accent]", "language": "en-IN", "indian": True},
+    "bholu": {"voice": "Sadachbia", "tags": "[energetic] [young man] [Indian English accent]", "language": "en-IN", "indian": True},
     "nani": {"voice": "Gacrux", "tags": "[warm] [elderly grandmother] [Indian English accent]", "language": "en-IN", "indian": True},
     "mamu": {"voice": "Fenrir", "tags": "[gruff] [loud] [Indian English accent from Bihar]", "language": "en-IN", "indian": True},
 }
@@ -61,7 +61,7 @@ def script_lines():
         "Object.values(d).forEach(walk);"
         "for (const level of s.LEVELS) for (const l of [...level.intro, ...level.outro]) out.set(l.text, l.who);"
         "for (const t of d.HIT_LINES) out.set(t, 'mamu');"
-        "for (const t of d.LOW_BATTERY_LINES) out.set(t, 'riya');"
+        "for (const t of d.LOW_BATTERY_LINES) out.set(t, 'bholu');"
         "for (const l of s.ENDING) out.set(l.text, l.who);"
         "console.log(JSON.stringify([...out].map(([text, who]) => [who, text])));"
     )
@@ -92,11 +92,28 @@ def speak(speaker, text, tags=True):
     return gemini.inline_data(response)
 
 
+ONES = "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen".split()
+TENS = "_ _ twenty thirty forty fifty sixty seventy eighty ninety".split()
+UNITS = {"km": "kilometres", "kms": "kilometres", "rs": "rupees"}
+
+
+def spell(n):
+    """A number in words, the way the scripts write them (transcripts use digits)."""
+    if n < 20:
+        return ONES[n]
+    if n < 100:
+        return TENS[n // 10] + ("" if n % 10 == 0 else " " + ONES[n % 10])
+    if n < 1000:
+        return ONES[n // 100] + " hundred" + ("" if n % 100 == 0 else " " + spell(n % 100))
+    return spell(n // 1000) + " thousand" + ("" if n % 1000 == 0 else " " + spell(n % 1000))
+
+
 def words(text):
     text = text.lower().replace("’", "'")
+    text = re.sub(r"\d[\d,]*", lambda m: " " + spell(int(m.group().replace(",", ""))) + " ", text)
     for short, full in CONTRACTIONS.items():
         text = text.replace(short, full)
-    return re.findall(r"[a-z0-9]+", text)
+    return [UNITS.get(w, w) for w in re.findall(r"[a-z0-9]+", text)]
 
 
 def check(path, text):
@@ -212,6 +229,7 @@ def main():
         print(f"[{i}/{len(todo)}] {speaker}: {text}")
         if record(speaker, text):
             local.discard(file_for(speaker, text))
+            local_list.write_text(json.dumps(sorted(local), indent=1))  # progress survives a crash
         else:
             failed.append(f"{speaker}: {text}")
         time.sleep(1)

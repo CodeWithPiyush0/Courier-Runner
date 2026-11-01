@@ -6,10 +6,8 @@ const BG_DEPTH = 14; // background plate distance from the camera
 const CAST_DEPTH = 6; // character cut-outs
 const DUST_DEPTH = 3.5; // floating particles in front
 const COVER = 1.22; // background bigger than the view, so camera moves never show its edge
-const MOUTH_OPEN = 0.13; // voice level that opens the speaker's mouth
-const MOUTH_HOLD = 0.07; // seconds a mouth stays open/shut at least, so it flaps rather than flickers
-// Which character each cut-out shows (to know whose mouth moves).
-const WHO = { riya: 'riya', mishra: 'dispatch', nani: 'nani', mamu: 'mamu' };
+// Which character each cut-out shows (to know who is speaking).
+const WHO = { bholu: 'bholu', mishra: 'dispatch', nani: 'nani', mamu: 'mamu' };
 const whoIs = (img) => Object.entries(WHO).find(([part]) => img.includes(part))?.[1];
 const ease = (t) => t * t * (3 - 2 * t);
 
@@ -21,6 +19,7 @@ const MOVES = {
   'truck-right': (t) => ({ x: -0.9 + 1.8 * ease(t), y: 0, z: -0.3 * t }),
   'truck-left': (t) => ({ x: 0.9 - 1.8 * ease(t), y: 0, z: -0.3 * t }),
   rise: (t) => ({ x: 0, y: -0.5 + 0.8 * ease(t), z: -0.6 * t }),
+  descend: (t) => ({ x: 0, y: 0.55 - 1.1 * ease(t), z: -1.4 * t }), // a drone sinking towards the street
   drift: (t) => ({ x: 0.5 * Math.sin(t * 2.2), y: 0.15 * Math.sin(t * 3.1), z: -0.5 * t, roll: 0.01 * Math.sin(t * 2) }),
 };
 
@@ -38,12 +37,6 @@ export class Stage {
     this.scene.add(this.group);
     this.time = 0;
     this.shot = null;
-    // Where each cut-out's "mouth open" patch goes (made by tools/gen_mouths.py).
-    this.mouths = fetch('/art/story/mouths.json')
-      .then((res) => (res.ok ? res.json() : {}))
-      .catch(() => ({}));
-    this.mouthOpen = false;
-    this.mouthTimer = 0;
   }
 
   texture(name) {
@@ -58,11 +51,9 @@ export class Stage {
     return this.textures.get(name);
   }
 
-  // Load the pictures a cutscene needs (and free the ones it doesn't), plus
-  // the mouth patches of the characters in them.
+  // Load the pictures a cutscene needs (and free the ones it doesn't).
   async load(pictures) {
-    const mouths = await this.mouths;
-    const names = [...pictures, ...pictures.filter((n) => mouths[n]).map((n) => `${n}-mouth`)];
+    const names = pictures;
     const keep = new Set(names);
     for (const [name, promise] of this.textures) {
       if (!keep.has(name)) {
@@ -74,16 +65,14 @@ export class Stage {
   }
 
   // Compose a shot: { bg, cast: [{ img, side }], move, dust, tint }.
-  // `speaker` is who is talking (their mouth moves with the voice).
+  // `speaker` is who is talking (they bob with the voice; the speech bubble points at them).
   async show(shot, speaker) {
     this.shot = shot;
     this.time = 0;
     this.group.clear();
     this.cast = [];
-    this.mouth = null;
     this.speakerPlane = null;
     this.ready = false; // true once the pictures are up
-    const mouths = await this.mouths;
     const aspect = window.innerWidth / window.innerHeight;
     this.camera.aspect = aspect;
     this.camera.updateProjectionMatrix();
@@ -129,20 +118,6 @@ export class Stage {
       this.group.add(plane);
       this.cast.push(plane);
       if (whoIs(member.img) === speaker) this.speakerPlane = plane;
-
-      // The speaker's open mouth: a small patch laid over the closed one.
-      const spot = mouths[member.img];
-      const patch = spot && whoIs(member.img) === speaker ? await this.texture(`${member.img}-mouth`) : null;
-      if (patch && shot === this.shot) {
-        const mouth = new THREE.Mesh(
-          new THREE.PlaneGeometry(spot.w * width, spot.h * height),
-          new THREE.MeshBasicMaterial({ map: patch, transparent: true, depthWrite: false }),
-        );
-        mouth.position.set((spot.x + spot.w / 2 - 0.5) * width, (1 - spot.y - spot.h / 2) * height, 0.002);
-        mouth.visible = false;
-        plane.add(mouth);
-        this.mouth = mouth;
-      }
     }
 
     this.dust = this.makeDust(shot.dust ?? 'dust');
@@ -151,7 +126,7 @@ export class Stage {
   }
 
   makeDust(kind) {
-    const count = 70;
+    const count = kind === 'none' ? 0 : 70;
     const positions = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
       positions.set([(Math.random() - 0.5) * 7, (Math.random() - 0.5) * 4, -DUST_DEPTH - Math.random() * 3], i * 3);
@@ -188,15 +163,8 @@ export class Stage {
     this.camera.position.set(move.x, move.y, move.z);
     this.camera.rotation.set(0, 0, move.roll ?? 0);
 
-    // The speaker bobs with their voice and their mouth flaps; everyone breathes a little.
+    // The speaker bobs with their voice; everyone breathes a little.
     const level = this.sound.voiceLevel();
-    this.mouthTimer -= dt;
-    const open = level > MOUTH_OPEN;
-    if (open !== this.mouthOpen && this.mouthTimer <= 0) {
-      this.mouthOpen = open;
-      this.mouthTimer = MOUTH_HOLD;
-    }
-    if (this.mouth) this.mouth.visible = this.mouthOpen;
     this.cast.forEach((plane, i) => {
       const breathe = Math.sin(this.time * 2 + i) * 0.006;
       plane.scale.set(1 - level * 0.01, 1 + breathe + level * 0.025, 1);

@@ -1,7 +1,7 @@
 // The world has two kinds of zone:
 // - road: a flat road with 3 lanes (-1, 0, 1), through Bihar traffic;
 // - tunnel: a nala / underpass shortcut, an octagonal tube with one lane per
-//   side, where Riya can ride the walls and flip to the ceiling.
+//   side, where Bholu can ride the walls and flip to the ceiling.
 // Both share the same floor height and lane numbers, so lanes -1, 0, 1 on the
 // road line up with the three floor-most sides of the tube.
 
@@ -15,9 +15,9 @@ export const SEGMENT_LENGTH = 10;
 export const SEGMENT_COUNT = 16;
 
 // Road geometry.
-// The gameplay camera: this far above the floor and behind Riya, looking down
-// this much. High enough that the lane ahead shows over her helmet. Sprites
-// (Riya, Mamu, obstacles) tilt back by the same pitch to face it.
+// The gameplay camera: this far above the floor and behind Bholu, looking down
+// this much. High enough that the lane ahead shows over his helmet. Sprites
+// (Bholu, Mamu, obstacles) tilt back by the same pitch to face it.
 export const CAMERA_HEIGHT = 4.8;
 export const CAMERA_BACK = 7.5;
 export const CAMERA_PITCH = -0.36;
@@ -49,7 +49,7 @@ export const ZONE_PHYSICS = {
 };
 
 // Phone torch battery, in tunnels only. A full charge lasts 1 / BATTERY_DRAIN
-// seconds; the darker it gets, the less of the tunnel she can see.
+// seconds; the darker it gets, the less of the tunnel he can see.
 export const BATTERY_DRAIN = 1 / 22;
 export const BATTERY_PER_PICKUP = 0.12;
 export const BATTERY_LOW = 0.3;

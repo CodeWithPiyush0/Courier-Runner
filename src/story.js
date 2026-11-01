@@ -3,15 +3,15 @@
 // so after editing a line, run `npm run voice` to record the new version.
 // `shot` names the cutscene picture for the line (see scenes.js).
 //
-// Riya grew up in Muzaffarpur and rides a scooter for a delivery app in Patna.
+// Bholu grew up in Muzaffarpur and rides a scooter for a delivery app in Patna.
 // Today's parcel is Nani's old radio, fixed in Patna in time for her birthday,
 // and it has to reach Nani's house in the litchi orchards of Muzaffarpur by
 // evening. A traffic cop ("Mamu", as everyone in Bihar calls the police) chases
-// her the whole 75 km for breaking rules. At Nani's door he takes off his
-// helmet: he really is her Mamu, Nani's son, coming home for the birthday too.
+// him the whole 75 km for breaking rules. At Nani's door the cop takes off his
+// helmet: he really is Bholu's Mamu, Nani's son, coming home for the birthday too.
 
 export const CHARACTERS = {
-  riya: { name: 'Riya', portrait: '/art/portrait-riya.webp' },
+  bholu: { name: 'Bholu', portrait: '/art/portrait-bholu.webp' },
   dispatch: { name: 'Mishra ji · Dispatch', portrait: '/art/dispatch.webp' },
   nani: { name: 'Nani', portrait: '/art/portrait-nani.webp' },
   mamu: { name: 'Traffic Mamu', portrait: '/art/portrait-mamu.webp' },
@@ -19,7 +19,7 @@ export const CHARACTERS = {
 
 // Each delivery is a level. `zones` is the route: a list of [zone, metres], and
 // the delivery is complete at the end of it. Roads have 3 lanes; tunnels are the
-// nala / underpass shortcuts where she can ride the walls. `difficulty` ramps
+// nala / underpass shortcuts where he can ride the walls. `difficulty` ramps
 // from the first to the second value over the route.
 export const LEVELS = [
   {
@@ -32,14 +32,14 @@ export const LEVELS = [
     powers: false,
     tutorial: 'basics',
     intro: [
-      { who: 'dispatch', shot: 'dispatch', text: "Riya! Riya! Are you awake? An urgent parcel just came in." },
-      { who: 'riya', shot: 'shop', text: "Ka ho, Mishra ji! Always awake. What's the parcel?" },
+      { who: 'dispatch', shot: 'dispatch', text: "Bholu! Bholu! Are you awake? An urgent parcel just came in." },
+      { who: 'bholu', shot: 'shop', text: "Ka ho, Mishra ji! Always awake. What's the parcel?" },
       { who: 'dispatch', shot: 'dispatch-close', text: "Pickup from Laxmi Radio Repair, Patna. Drop at... 'Nani, Litchi Bagan, Muzaffarpur'." },
-      { who: 'riya', shot: 'parcel', text: "Arre, that's my Nani! Wait... why is this box humming?" },
+      { who: 'bholu', shot: 'parcel', text: "Arre, that's my Nani! Wait... why is this box humming?" },
       { who: 'dispatch', shot: 'dispatch', text: "It's her old radio, fixed and switched on. Today is her birthday. Deliver it by evening. Chalo!" },
     ],
     outro: [
-      { who: 'riya', shot: 'street-grin', text: "Old city done! Patna traffic is no match for me." },
+      { who: 'bholu', shot: 'street-grin', text: "Old city done! Patna traffic is no match for me." },
       { who: 'dispatch', shot: 'dispatch-close', text: "Don't celebrate yet. A traffic police Mamu saw you jump that signal." },
     ],
   },
@@ -53,14 +53,14 @@ export const LEVELS = [
     powers: true,
     tutorial: 'chase',
     intro: [
-      { who: 'mamu', shot: 'mamu', text: "Ae, scooter wali! Signal tod ke kahan ja rahi ho? Ruko!" },
-      { who: 'riya', shot: 'street-shock', text: "Sorry, Mamu! Birthday delivery hai! Challan baad mein!" },
-      { who: 'riya', shot: 'street-shock', text: "Wait... why does that voice sound so familiar?" },
-      { who: 'dispatch', shot: 'dispatch-close', text: "Riya, if that Mamu catches you, no birthday, only challan. Bhago!" },
+      { who: 'mamu', shot: 'mamu', text: "Ae, scooter wale! Signal tod ke kahan ja rahe ho? Ruko!" },
+      { who: 'bholu', shot: 'street-shock', text: "Sorry, Mamu! Birthday delivery hai! Challan baad mein!" },
+      { who: 'bholu', shot: 'street-shock', text: "Wait... why does that voice sound so familiar?" },
+      { who: 'dispatch', shot: 'dispatch-close', text: "Bholu, if that Mamu catches you, no birthday, only challan. Bhago!" },
     ],
     outro: [
       { who: 'dispatch', shot: 'dispatch', text: "You lost him! But Gandhi Setu is jammed for ten kilometres." },
-      { who: 'riya', shot: 'street-grin', text: "Ten kilometres? Then I'm taking the tunnel under the bridge!" },
+      { who: 'bholu', shot: 'street-grin', text: "Ten kilometres? Then I'm taking the tunnel under the bridge!" },
     ],
   },
   {
@@ -74,12 +74,12 @@ export const LEVELS = [
     tutorial: 'tunnel',
     intro: [
       { who: 'dispatch', shot: 'setu', text: "Gandhi Setu. Five kilometres over the Ganga, and fifty thousand trucks." },
-      { who: 'riya', shot: 'street-grin', text: "There's a service tunnel under the bridge. Dark, but empty." },
+      { who: 'bholu', shot: 'street-grin', text: "There's a service tunnel under the bridge. Dark, but empty." },
       { who: 'dispatch', shot: 'dispatch', text: "Keep your phone torch on. And don't drop Nani's radio in the Ganga!" },
     ],
     outro: [
-      { who: 'riya', shot: 'haat', text: "Hajipur! I can smell the bananas already." },
-      { who: 'mamu', shot: 'mamu', text: "I can still see you, scooter wali! Hajipur mein bhi pakad lenge!" },
+      { who: 'bholu', shot: 'haat', text: "Hajipur! I can smell the bananas already." },
+      { who: 'mamu', shot: 'mamu', text: "I can still see you, scooter wale! Hajipur mein bhi pakad lenge!" },
     ],
   },
   {
@@ -91,9 +91,9 @@ export const LEVELS = [
     chaser: true,
     powers: true,
     intro: [
-      { who: 'riya', shot: 'haat', text: "Hajipur banana market. Every cart in Bihar is here today." },
+      { who: 'bholu', shot: 'haat', text: "Hajipur banana market. Every cart in Bihar is here today." },
       { who: 'dispatch', shot: 'dispatch', text: "Customer called. Nani says the radio must reach before the evening songs." },
-      { who: 'riya', shot: 'parcel', text: "Mishra ji, the parcel is singing now! It's playing old film songs!" },
+      { who: 'bholu', shot: 'parcel', text: "Mishra ji, the parcel is singing now! It's playing old film songs!" },
     ],
     outro: [
       { who: 'dispatch', shot: 'dispatch-close', text: "Muzaffarpur is close. Nani has called nine times. Nine!" },
@@ -109,8 +109,8 @@ export const LEVELS = [
     powers: true,
     finale: true,
     intro: [
-      { who: 'nani', shot: 'nani', text: "Riya beta! The whole family is coming for my birthday. Where is my radio?" },
-      { who: 'riya', shot: 'orchard-grin', text: "Almost there, Nani! Just one small problem. A traffic police Mamu." },
+      { who: 'nani', shot: 'nani', text: "Bholu beta! The whole family is coming for my birthday. Where is my radio?" },
+      { who: 'bholu', shot: 'orchard-grin', text: "Almost there, Nani! Just one small problem. A traffic police Mamu." },
     ],
     outro: [],
   },
@@ -118,14 +118,14 @@ export const LEVELS = [
 
 // The finale at Nani's house in Muzaffarpur.
 export const ENDING = [
-  { who: 'nani', shot: 'doorstep', text: "My radio! And my Riya! Both arrived together!" },
-  { who: 'mamu', shot: 'reveal', text: "Got you finally, scooter wali! Signal jumping, five hundred rupees." },
-  { who: 'riya', shot: 'yard-shock', text: "Mamu?! You chased me all the way from Patna?" },
+  { who: 'nani', shot: 'doorstep', text: "My radio! And my Bholu! Both arrived together!" },
+  { who: 'mamu', shot: 'reveal', text: "Got you finally, scooter wale! Signal jumping, five hundred rupees." },
+  { who: 'bholu', shot: 'yard-shock', text: "Mamu?! You chased me all the way from Patna?" },
   { who: 'mamu', shot: 'mamu-laugh', text: "Of course! I was coming home for Amma's birthday too. You just wouldn't stop!" },
   { who: 'nani', shot: 'radio-party', text: "Arre, both of you, sit! The radio is playing our old song." },
   { who: 'mamu', shot: 'litchi', text: "Here. Challan cancelled. Have some Shahi litchi instead." },
-  { who: 'dispatch', shot: 'dispatch-close', text: "Delivery confirmed. Five stars! And Riya, tell your Mamu we need escorts like him." },
-  { who: 'riya', shot: 'yard-wave', text: "Happy birthday, Nani! And Mamu, next time I follow the rules. Promise!" },
+  { who: 'dispatch', shot: 'dispatch-close', text: "Delivery confirmed. Five stars! And Bholu, tell your Mamu we need escorts like him." },
+  { who: 'bholu', shot: 'yard-wave', text: "Happy birthday, Nani! And Mamu, next time I follow the rules. Promise!" },
 ];
 
 // Shown over the opening shots.

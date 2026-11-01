@@ -34,3 +34,6 @@ art-requests/out/
 # first-round Codex images that were replaced (kept locally for comparison)
 art-requests/round1/
 art-requests/round2-real/
+
+# family photos used as references for the characters: never commit or deploy
+private/

@@ -26,14 +26,14 @@ GREEN = (0, 255, 0)
 # Several assets drawn in one image to save generations: a grid of (columns, rows), read left to right,
 # top to bottom. None skips a cell (art that has since been replaced by another sheet).
 SHEETS = {
-    "sheet-riya-1": ((2, 2), ["sprite-ride", "sprite-left", "sprite-right", "sprite-jump"]),
-    "sheet-riya-2": ((2, 2), ["sprite-slide", "sprite-hit", "sprite-cheer", None]),
+    "sheet-bholu-1": ((2, 2), ["sprite-ride", "sprite-left", "sprite-right", "sprite-jump"]),
+    "sheet-bholu-2": ((2, 2), ["sprite-slide", "sprite-hit", "sprite-cheer", None]),
     "sheet-mamu": ((3, 1), ["cut-mamu", "cut-mamu-laugh", "chaser-mamu"]),
-    "sheet-riya-faces": ((2, 2), ["cut-riya-talk", "cut-riya-grin", "cut-riya-shock", "cut-riya-wave"]),
+    "sheet-bholu-faces": ((2, 2), ["cut-bholu-talk", "cut-bholu-grin", "cut-bholu-shock", "cut-bholu-wave"]),
     "sheet-elders": ((2, 1), ["cut-nani", "cut-mishra"]),
 }
 # Radio / subtitle portraits cropped from a cut-out instead of drawn separately.
-PORTRAITS = {"cut-mamu": "portrait-mamu", "cut-riya-talk": "portrait-riya", "cut-nani": "portrait-nani", "cut-mishra": "dispatch"}
+PORTRAITS = {"cut-mamu": "portrait-mamu", "cut-bholu-talk": "portrait-bholu", "cut-nani": "portrait-nani", "cut-mishra": "dispatch"}
 
 
 def on_green(image):
@@ -100,18 +100,6 @@ def pad_to(image, aspect):
     return canvas
 
 
-def forget_mouth(name):
-    """A redrawn cut-out's old lip-flap patch would land in the wrong place: drop it until
-    tools/mouth_flaps.py is re-measured and rerun."""
-    mouths_file = gen_story_art.ART / "story" / "mouths.json"
-    mouths = json.loads(mouths_file.read_text()) if mouths_file.exists() else {}
-    if name in mouths:
-        del mouths[name]
-        mouths_file.write_text(json.dumps(mouths, indent=1))
-        (gen_story_art.ART / "story" / f"{name}-mouth.webp").unlink(missing_ok=True)
-        print(f"  {name}: mouth patch removed; re-measure it in tools/mouth_flaps.py")
-
-
 def save_asset(name, image):
     if name in gen_story_art.ASSETS:
         folder, aspect, kind, _, _ = gen_story_art.ASSETS[name]
@@ -120,8 +108,6 @@ def save_asset(name, image):
             a, b = map(int, aspect.split(":"))
             image = pad_to(image, a / b)
         gen_story_art.save(gen_story_art.ART / folder / f"{name}.webp", kind, image)
-        if kind == "cutout":
-            forget_mouth(name)
     elif name in gen_images.ASSETS:
         gen_images.save(name, gen_images.ASSETS[name][2], image)
     else:

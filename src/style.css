@@ -273,7 +273,7 @@ img { -webkit-user-drag: none; }
   100% { opacity: 0; }
 }
 
-/* ---------- radio message (Dispatch, Riya, Nani …) ---------- */
+/* ---------- radio message (Dispatch, Bholu, Nani …) ---------- */
 #dispatch {
   position: fixed;
   top: calc(var(--top) + 52px);
@@ -690,7 +690,7 @@ body.cinematic #mute { display: none; } /* keep cutscenes clear */
   .card { padding: 22px 18px 18px; }
 }
 
-/* Phone title screen: a compact card so Riya's face in the key art stays visible. */
+/* Phone title screen: a compact card so Bholu's face in the key art stays visible. */
 @media (orientation: portrait) and (max-width: 520px) {
   #overlay.title .card { padding: 18px 16px 14px; }
   #overlay.title .emblem, #overlay.title .tagline { display: none; }

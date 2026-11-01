@@ -6,7 +6,7 @@ import {
 const FAR_BEHIND = 11.5; // just behind the camera, out of view
 const CLOSE_BEHIND = 3.4;
 const VISIBLE_WITHIN = 9;
-const SIDE_OFFSET = 0.3; // lanes; keeps him at Riya's heel instead of blocking the view
+const SIDE_OFFSET = 0.3; // lanes; keeps him at Bholu's heel instead of blocking the view
 const BEACON = [0xff2a3a, 0x2a6bff]; // police light: red, then blue
 
 const loader = new THREE.TextureLoader();
@@ -37,9 +37,9 @@ function chaserSprite(file, height, light) {
   return group;
 }
 
-// Mamu, the traffic police, on his motorbike: after Riya for every rule she
+// Mamu, the traffic police, on his motorbike: after Bholu for every rule he
 // breaks, on the road and down the shortcuts. Hangs back out of view, closes in
-// when she clips something, and catches her if she does it again before he
+// when Bholu clips something, and catches him if he does it again before he
 // falls back.
 export class Chaser {
   constructor(scene) {

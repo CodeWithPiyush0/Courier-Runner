@@ -13,7 +13,7 @@ const FLOOR = -TUBE_RADIUS;
 const SIDEWALK = 2.2;
 const BUILDING_DEPTH = 6;
 const BUILDING_X = ROAD_WIDTH / 2 + SIDEWALK + BUILDING_DEPTH / 2;
-const BEHIND = 12; // metres of street kept behind Riya (more while a cutscene camera trails her)
+const BEHIND = 12; // metres of street kept behind Bholu (more while a cutscene camera trails him)
 
 const standard = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, flatShading: true, ...extra });
 const basic = (color, extra = {}) => new THREE.MeshBasicMaterial({ color, ...extra });
@@ -30,52 +30,19 @@ function canvasTexture(width, height, draw) {
   return texture;
 }
 
-// Shopfronts of old Patna: a painted wall, windows with balconies above, a
-// shop sign and shutters at street level.
-const SHOPS = [
-  ['शर्मा स्वीट्स', '#d6246e'], ['Litti Point', '#f59e1b'], ['Jha Medical Hall', '#0e6b68'],
-  ['मोबाइल रिपेयर', '#1f5fbf'], ['Laxmi Cloth House', '#8a2be2'], ['चाय · नाश्ता', '#c0392b'],
-  ['Raj Tent House', '#2e8b3a'], ['Sinha Photo Studio', '#d35400'], ['किताब घर', '#6d4c41'],
-  ['Shiv Hardware', '#455a64'],
-];
-const WALLS = ['#e8c9a0', '#d9a6a0', '#a8d0c4', '#f0dca0', '#c8b8d8', '#e0b080', '#b8c8a0', '#e8e0d0'];
+// Shopfronts of old Patna: painted elevations (public/art/facades/, made by
+// tools/gen_props.py). Each building is as tall as its picture, so nothing stretches.
+const FACADES = ['fa-sweets', 'fa-mobile', 'fa-chai', 'fa-cloth', 'fa-medical', 'fa-litti', 'fa-books', 'fa-tent'];
+const FRONT_WIDTH = SEGMENT_LENGTH * 0.96;
+const textureLoader = new THREE.TextureLoader();
 
-function facade(shop, wall) {
-  return canvasTexture(512, 1024, (ctx, w, h) => {
-    ctx.fillStyle = wall;
-    ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = 'rgba(0,0,0,0.08)'; // weathering streaks
-    for (let i = 0; i < 12; i++) ctx.fillRect(Math.random() * w, 0, 6 + Math.random() * 14, h * (0.3 + Math.random() * 0.6));
-    for (let floor = 0; floor < 4; floor++) { // windows with balconies
-      const y = 40 + floor * 190;
-      for (const x of [50, 290]) {
-        ctx.fillStyle = Math.random() < 0.35 ? '#ffd27a' : '#2b3340';
-        ctx.fillRect(x, y, 170, 110);
-        ctx.strokeStyle = '#5a4030'; ctx.lineWidth = 8; ctx.strokeRect(x, y, 170, 110);
-        ctx.fillStyle = '#3a3a3a';
-        for (let r = 0; r < 9; r++) ctx.fillRect(x - 10 + r * 23, y + 115, 5, 40);
-        ctx.fillRect(x - 14, y + 112, 200, 7);
-        ctx.fillRect(x - 14, y + 150, 200, 7);
-        if (Math.random() < 0.4) { // laundry drying on the balcony
-          ctx.fillStyle = pick(['#d62828', '#ffc21a', '#1f5fbf', '#fff']);
-          ctx.fillRect(x + 20 + Math.random() * 100, y + 118, 30, 30);
-        }
-      }
-    }
-    ctx.fillStyle = shop[1]; // the shop sign
-    ctx.fillRect(10, h - 260, w - 20, 80);
-    ctx.fillStyle = '#fff1d6';
-    ctx.font = 'bold 54px "Noto Sans Devanagari", "Nirmala UI", sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(shop[0], w / 2, h - 220, w - 50);
-    ctx.fillStyle = '#7a7f86'; // rolling shutter, half open
-    ctx.fillRect(30, h - 170, w - 60, 90);
-    ctx.strokeStyle = '#5a5f66'; ctx.lineWidth = 3;
-    for (let y = h - 165; y < h - 80; y += 10) { ctx.beginPath(); ctx.moveTo(30, y); ctx.lineTo(w - 30, y); ctx.stroke(); }
-    ctx.fillStyle = '#ffd27a';
-    ctx.fillRect(30, h - 80, w - 60, 80); // lit shop inside
-  });
+function facadeMaterial(name) {
+  const map = textureLoader.load(`/art/facades/${name}.webp`, (texture) => { texture.colorSpace = THREE.SRGBColorSpace; });
+  map.anisotropy = 4;
+  return standard(0xffffff, { map, flatShading: false, roughness: 1 });
 }
+
+const WALLS = ['#e8c9a0', '#d9a6a0', '#a8d0c4', '#f0dca0', '#c8b8d8', '#e0b080', '#b8c8a0', '#e8e0d0']; // back-row wall colours
 
 // The second row of buildings: plain painted walls with windows, AC boxes and
 // sunshades. One storey per tile; it repeats up the wall.
@@ -328,7 +295,7 @@ function mesh(geometry, material, x = 0, y = 0, z = 0) {
 }
 
 function buildMaterials() {
-  const facades = SHOPS.map((shop, i) => standard(0xffffff, { map: facade(shop, WALLS[i % WALLS.length]), flatShading: false }));
+  const facades = FACADES.map(facadeMaterial);
   const stencil = canvasTexture(256, 256, (ctx, w, h) => {
     ctx.fillStyle = '#6f6b64'; ctx.fillRect(0, 0, w, h);
     ctx.fillStyle = 'rgba(30,25,20,0.35)';
@@ -401,7 +368,7 @@ export class World {
     this.reset();
   }
 
-  // behind: metres of street to keep behind Riya until the next reset / keepBehind.
+  // behind: metres of street to keep behind Bholu until the next reset / keepBehind.
   reset(playerZ = 0, behind = BEHIND) {
     this.behind = behind;
     this.segments.forEach((seg, s) => {
@@ -414,12 +381,6 @@ export class World {
     this.behind = metres;
   }
 
-  // The stretch of street currently built: [nearest z ahead, furthest z behind].
-  get span() {
-    const zs = this.segments.map((seg) => seg.position.z);
-    return [Math.min(...zs) - SEGMENT_LENGTH / 2, Math.max(...zs) + SEGMENT_LENGTH / 2];
-  }
-
   // Dress a segment for the zone it is in, with a fresh mix of buildings.
   decorate(seg) {
     const zone = this.zones.zoneAt(seg.position.z);
@@ -427,10 +388,10 @@ export class World {
     seg.tunnel.visible = zone === 'tunnel';
     if (zone === 'road') {
       for (const building of seg.road.buildings) {
-        const height = 6 + Math.random() * 9;
-        building.scale.y = height;
-        building.position.set(building.side * BUILDING_X, FLOOR, 0);
         const front = pick(this.materials.facades);
+        const picture = front.map.image;
+        building.scale.y = picture ? (FRONT_WIDTH * picture.height) / picture.width : 12;
+        building.position.set(building.side * BUILDING_X, FLOOR, 0);
         const { plainWall, roof } = this.materials;
         // BoxGeometry faces: +x, -x, +y, -y, +z, -z. The shopfront faces the road.
         building.material = building.side < 0
@@ -449,7 +410,7 @@ export class World {
   }
 
   update(dt, playerZ) {
-    // The skyline travels with Riya so it stays on the horizon; hidden underground.
+    // The skyline travels with Bholu so it stays on the horizon; hidden underground.
     this.skyline.position.set(0, SKYLINE.bottom + SKYLINE.height / 2, playerZ);
     this.sky.position.set(0, FLOOR, playerZ);
     this.skyline.visible = this.sky.visible = this.zones.zoneAt(playerZ) === 'road';

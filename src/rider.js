@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { CAMERA_PITCH } from './config.js';
 
-// Riya in play: painted sprites (public/art/sprites/), one per pose, on a
+// Bholu in play: painted sprites (public/art/sprites/), one per pose, on a
 // plane that faces the gameplay camera. Heights are in metres, the sprite's
 // bottom (the back wheel) sits at the rider's origin.
 const POSES = {
@@ -83,7 +83,7 @@ export class Rider {
     this.hitFlash = Math.max(0, this.hitFlash - dt * 3);
     this.material.color.copy(this.zoneTint).lerp(HIT_TINT, this.hitFlash);
 
-    // The shadow stays on the floor and fades as she rises.
+    // The shadow stays on the floor and fades as he rises.
     const above = state.height ?? 0;
     this.shadow.position.y = -above + 0.02;
     this.shadow.material.opacity = 0.3 / (1 + above);

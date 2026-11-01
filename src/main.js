@@ -12,7 +12,6 @@ import { progress } from './progress.js';
 import { LEVELS, ENDING } from './story.js';
 import { ZonePlan } from './zones.js';
 import { World } from './world.js';
-import { City } from './city.js';
 import { Player } from './player.js';
 import { Track, OBSTACLES } from './track.js';
 import { Chaser } from './chaser.js';
@@ -45,16 +44,15 @@ const ARRIVE_TIME = 1.6; // seconds to glide to a stop at the drop-off
 const GEMS_FOR_STAR = 0.6;
 
 // Fog, light and background per zone; the scene eases between them. The road
-// is a hazy Patna afternoon (the same haze as the sky's horizon, world.js); the tunnel is dark apart from Riya's phone torch,
-// and how far she can see shrinks as its battery runs down.
+// is a hazy Patna afternoon (the same haze as the sky's horizon, world.js); the tunnel is dark apart from Bholu's phone torch,
+// and how far he can see shrinks as its battery runs down.
 const ATMOSPHERE = {
   road: { color: 0xd9e8ef, near: 35, far: 170, ambient: 0xffffff, ambientIntensity: 1.0, sun: 1.3, torch: 0 },
   tunnel: { color: 0x0b0a09, near: 4, far: 70, ambient: 0x6a5f50, ambientIntensity: 0.35, sun: 0.05, torch: 70 },
 };
-const WIDE_FAR = 850; // fog distance during the drone shot over the city
 const DARK_FAR = 16; // fog distance in a tunnel when the torch is almost dead
-const INTRO_BEHIND = 55; // metres of street kept behind Riya during an intro (the opening glide starts 46 m back)
-const EXIT_SETTLE = 40; // metres before a tunnel exit when Riya steers back to the floor
+const INTRO_BEHIND = 55; // metres of street kept behind Bholu during an intro (the opening glide starts 46 m back)
+const EXIT_SETTLE = 40; // metres before a tunnel exit when Bholu steers back to the floor
 
 // Rendering cost levels. 'auto' starts high on desktop / medium on phones and
 // steps down if the frame rate drops during a run.
@@ -131,7 +129,7 @@ function watchFrameRate(dt) {
 const zones = new ZonePlan();
 const world = new World(scene, zones);
 const player = new Player(scene, camera);
-// Riya's phone torch: lights the tunnel ahead of her, dimming with the battery.
+// Bholu's phone torch: lights the tunnel ahead of him, dimming with the battery.
 const torch = new THREE.SpotLight(0xfff2d6, 0, 55, 0.6, 0.55, 1.1);
 torch.position.set(0, 2.2, 0);
 torch.target.position.set(0, 0.8, -22);
@@ -163,7 +161,6 @@ const targetColor = new THREE.Color();
 // menu | cinematic | running | paused | arriving | results | dead
 let state = 'menu';
 let level = null; // the story delivery being played, or null in endless
-let city = null; // old Patna round the start of the first delivery, for the drone shot (city.js)
 let deathCause = null; // crash | caught | dark
 let zone = 'road';
 let zoneSpeed = 1;
@@ -193,7 +190,7 @@ function writeBest(value) {
 
 const score = () => Math.floor(distance) + coins * COIN_POINTS;
 const playerPoint = () => player.body.getWorldPosition(playerPosition).clone().add(new THREE.Vector3(0, 0, -1));
-const floorPoint = () => new THREE.Vector3(0, -TUBE_RADIUS, player.z); // under Riya when she's on the floor lane
+const floorPoint = () => new THREE.Vector3(0, -TUBE_RADIUS, player.z); // under Bholu when he's on the floor lane
 const inTunnel = () => zone === 'tunnel';
 const chaserActive = () => !level || level.chaser;
 const routeLength = () => (level ? level.zones.reduce((sum, [, m]) => sum + m, 0) : Infinity);
@@ -201,14 +198,9 @@ const routeLength = () => (level ? level.zones.reduce((sum, [, m]) => sum + m, 0
 // Ease fog, background and lights towards the current zone (t = 1 snaps).
 function applyAtmosphere(t) {
   const target = ATMOSPHERE[zone];
-  let far = inTunnel() ? DARK_FAR + (target.far - DARK_FAR) * battery : target.far;
-  let near = target.near;
-  if (cinematic.wide) { // the drone shot: see the whole city
-    far = WIDE_FAR;
-    near = WIDE_FAR * 0.3;
-  }
+  const far = inTunnel() ? DARK_FAR + (target.far - DARK_FAR) * battery : target.far;
   scene.fog.color.lerp(targetColor.set(target.color), t);
-  scene.fog.near += (near - scene.fog.near) * t;
+  scene.fog.near += (target.near - scene.fog.near) * t;
   scene.fog.far += (far - scene.fog.far) * t;
   torch.intensity += (target.torch * (0.25 + 0.75 * battery) - torch.intensity) * t;
   ambient.color.lerp(targetColor.set(target.ambient), t);
@@ -226,8 +218,6 @@ function setZone(next) {
 // Reset the world for a fresh run along `route` (null = endless).
 function setupRun(route) {
   cinematic.finish();
-  city?.dispose();
-  city = null;
   tutorial.stop();
   voice.stop(); // nothing from the last run (a game-over quip, a radio line) carries over
   hud.hideDispatch();
@@ -280,7 +270,7 @@ function cutsceneLines(lvl) {
 // slow connection can't block the game: missing bits are just skipped).
 function loadCutscenes(lvl) {
   const lines = cutsceneLines(lvl);
-  const loading = Promise.all([stage.load(picturesFor(lines)), voice.preload(lines.map((l) => l.text))]);
+  const loading = Promise.all([stage.load(picturesFor(lines, lvl)), voice.preload(lines.map((l) => l.text))]);
   return Promise.race([loading, new Promise((resolve) => setTimeout(resolve, LOAD_TIMEOUT))]);
 }
 
@@ -301,11 +291,7 @@ async function startLevel(id, { intro = true, resumeAt = null } = {}) {
   if (resumeAt) return resumeFrom(resumeAt);
   if (!intro) return beginRun();
   if (level.chaser) chaser.chase = 1; // Mamu is right there in the intro
-  world.reset(player.z, INTRO_BEHIND); // street behind Riya for the opening camera moves
-  if (level.id === 1) { // the drone opening flies over old Patna
-    const [streetTo, streetFrom] = world.span;
-    city = new City(scene, player.z, streetFrom, streetTo);
-  }
+  world.reset(player.z, INTRO_BEHIND); // street behind Bholu for the opening camera moves
   state = 'cinematic';
   cinematic.play(introBeats(level), {
     anchor: floorPoint,
@@ -314,8 +300,7 @@ async function startLevel(id, { intro = true, resumeAt = null } = {}) {
     onDone: () => {
       progress.markSeen(level.id);
       chaser.reset();
-      world.keepBehind(); // the street behind her moves back ahead
-      city?.handOver();
+      world.keepBehind(); // the street behind him moves back ahead
       beginRun();
     },
   });
@@ -655,7 +640,7 @@ function runFrame(realDt) {
     battery = Math.max(0, battery - BATTERY_DRAIN * dt);
     if (battery === 0) return die('dark');
     if (battery < BATTERY_LOW) {
-      if (!lowBatteryWarned) hud.say(pick(LOW_BATTERY_LINES), { who: 'riya' });
+      if (!lowBatteryWarned) hud.say(pick(LOW_BATTERY_LINES), { who: 'bholu' });
       lowBatteryWarned = true;
       batteryBeep -= dt;
       if (batteryBeep <= 0) {
@@ -719,13 +704,6 @@ function frame(timestamp) {
   if (state !== 'paused') {
     applyAtmosphere(Math.min(1, dt * 2.5));
     world.update(dt, player.z);
-    if (city) {
-      city.update(dt);
-      if (player.z < city.endZ) { // ridden out of the old city
-        city.dispose();
-        city = null;
-      }
-    }
     bursts.update(dt);
   }
   // 2.5D cutscenes render at full sharpness whatever the game's quality setting.

@@ -1,4 +1,4 @@
-"""Generate the painted obstacle sprites with Gemini.
+"""Generate the painted obstacle sprites and shopfronts with Gemini.
 
 Every obstacle on the track is a painted sprite in the cutscene art's 3D
 animated-film style, seen the way the chase camera sees it (from behind and a
@@ -78,6 +78,25 @@ PROPS = {
 }
 
 
+# Painted shopfronts for the street's front buildings (public/art/facades/): a straight-on elevation that
+# fills the frame edge to edge. world.js sizes each building to its picture, so nothing is stretched.
+FACADE = ("A straight-on, flat front elevation (no perspective, like an architect's drawing) of ONE old Patna "
+          "shop-house, filling the whole picture edge to edge with no sky, no street and nothing around it: a ground-floor "
+          "shop with a rolling shutter half open and goods inside, a big hand-painted shop sign, and the upper floors with "
+          "windows, little balconies, drying clothes, potted plants and an AC unit or two. In the exact style of the "
+          "reference: a stylised 3D animated feature film, bright cheerful colours, soft daylight. Not photorealistic.")
+FACADES = {
+    "fa-sweets": ("3:4", "Sign: 'Sharma Sweets' with 'शर्मा स्वीट्स' under it. Pink walls."),
+    "fa-mobile": ("3:4", "Sign: 'Mobile Repair' with 'मोबाइल रिपेयर' under it. Pale blue walls."),
+    "fa-chai": ("1:1", "Sign: 'Chai Nashta' with 'चाय नाश्ता' under it. Yellow walls, a small tea stall."),
+    "fa-cloth": ("9:16", "Sign: 'Laxmi Cloth House'. Mint green walls, saris hanging at the shop front, three upper floors."),
+    "fa-medical": ("3:4", "Sign: 'Jha Medical Hall' with a green cross. Cream walls."),
+    "fa-litti": ("1:1", "Sign: 'Litti Point' with 'लिट्टी चोखा' under it. Orange walls."),
+    "fa-books": ("9:16", "Sign: 'Kitab Ghar' with 'किताब घर' under it. Lilac walls, three upper floors."),
+    "fa-tent": ("9:16", "Sign: 'Raj Tent House'. Peach walls, colourful tent cloth in the shop, three upper floors."),
+}
+
+
 def style_reference():
     image = Image.open(STYLE_REF).convert("RGB")
     image.thumbnail((1024, 1024))
@@ -114,15 +133,40 @@ def make(name):
     print(f"{name}: {sprite.size[0]}x{sprite.size[1]}")
 
 
+def trim_margin(image):
+    """Cut away a plain white (or near-white) border the model sometimes leaves round a facade."""
+    px = np.asarray(image).astype(int)
+    content = px.min(axis=2) < 230
+    rows = np.nonzero(content.mean(axis=1) > 0.2)[0]
+    cols = np.nonzero(content.mean(axis=0) > 0.2)[0]
+    return image.crop((cols[0], rows[0], cols[-1] + 1, rows[-1] + 1))
+
+
+def make_facade(name):
+    aspect, what = FACADES[name]
+    print(f"{name}: generating")
+    response = gemini.request(f"models/{MODEL}:generateContent", {
+        "contents": [{"parts": [style_reference(), {"text": f"{FACADE} {what} No other text, no watermark."}]}],
+        "generationConfig": {"responseModalities": ["IMAGE"], "imageConfig": {"aspectRatio": aspect, "imageSize": "1K"}},
+    })
+    _, data = gemini.inline_data(response)
+    image = trim_margin(Image.open(io.BytesIO(data)).convert("RGB"))
+    image = image.resize((512, round(512 * image.height / image.width)), Image.LANCZOS)
+    (OUT.parent / "facades").mkdir(exist_ok=True)
+    image.save(OUT.parent / "facades" / f"{name}.webp", quality=85)
+    print(f"{name}: {image.size[0]}x{image.size[1]}")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("names", nargs="*")
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
-    todo = args.names or [n for n in PROPS if args.force or not (OUT / f"{n}.webp").exists()]
+    names = args.names or [n for n in [*PROPS, *FACADES] if args.force or not (
+        (OUT / f"{n}.webp") if n in PROPS else (OUT.parent / "facades" / f"{n}.webp")).exists()]
     with ThreadPoolExecutor(4) as pool:
-        list(pool.map(make, todo))
+        list(pool.map(lambda n: make(n) if n in PROPS else make_facade(n), names))
 
 
 if __name__ == "__main__":

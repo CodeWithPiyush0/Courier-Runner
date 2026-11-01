@@ -9,14 +9,14 @@ import { Rider } from './rider.js';
 const CAMERA_OFFSET = new THREE.Vector3(0, -TUBE_RADIUS + CAMERA_HEIGHT, CAMERA_BACK);
 const SPIN_PIVOT = 1.6; // flips and crash tumbles turn round the middle of the sprite
 
-const CAMERA_FOLLOW = 0.55; // on the road, how much the camera follows her sideways
+const CAMERA_FOLLOW = 0.55; // on the road, how much the camera follows him sideways
 
 // A lane number brought into -4..4 (keeps fractions, so it works mid-move).
 const signed = (lane) => ((((lane + 4) % 8) + 8) % 8) - 4;
 
-// The rig sits on the tube axis and rotates to the player's lane; Riya and the
+// The rig sits on the tube axis and rotates to the player's lane; Bholu and the
 // camera are its children, so in a tunnel the camera rolls with the floor. On
-// the road (flat = 1) the rig stays level and she moves sideways across lanes
+// the road (flat = 1) the rig stays level and he moves sideways across lanes
 // -1, 0, 1 instead; `flat` blends between the two at tunnel mouths.
 export class Player {
   constructor(scene, camera) {
@@ -47,7 +47,7 @@ export class Player {
     camera.rotation.set(CAMERA_PITCH, 0, 0);
     this.rig.add(camera);
 
-    // Lights travel with her, so obstacles ahead and around are always lit.
+    // Lights travel with him, so obstacles ahead and around are always lit.
     const light = new THREE.PointLight(0xbfe6ff, 12, 30, 1.4);
     light.position.set(0, -TUBE_RADIUS + 3, -2);
     this.rig.add(light);

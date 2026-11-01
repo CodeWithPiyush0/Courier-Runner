@@ -26,8 +26,8 @@ sys.stdout.reconfigure(line_buffering=True)
 
 # Four distinct Indian voices; pitch and rate nudge them towards each character.
 VOICES = {
-    "riya": {"voice": "en-IN-NeerjaExpressiveNeural", "rate": "+6%", "pitch": "+8Hz"},
-    "dispatch": {"voice": "en-IN-PrabhatNeural", "rate": "+8%", "pitch": "+0Hz"},
+    "bholu": {"voice": "en-IN-PrabhatNeural", "rate": "+8%", "pitch": "+10Hz"},
+    "dispatch": {"voice": "en-IN-PrabhatNeural", "rate": "+2%", "pitch": "-8Hz"},
     "nani": {"voice": "hi-IN-SwaraNeural", "rate": "-12%", "pitch": "-14Hz"},
     "mamu": {"voice": "hi-IN-MadhurNeural", "rate": "+0%", "pitch": "-8Hz"},
 }

@@ -1,17 +1,17 @@
 // Radio chatter during a run (Indian English, with Bihar flavour). Shown as
 // text and voiced by tools/gen_voice.py. Lines keyed by zone are picked by
-// where Riya is. Dispatch (Mishra ji) says these unless noted.
+// where Bholu is. Dispatch (Mishra ji) says these unless noted.
 
 export const START_LINES = [
   "Mamu is right behind you! Go, go, go!",
-  "New order, Riya. Traffic police on your tail. Chalo, move!",
-  "Full speed, Riya. And try not to jump every signal, haan?",
+  "New order, Bholu. Traffic police on your tail. Chalo, move!",
+  "Full speed, Bholu. And try not to jump every signal, haan?",
 ];
 
 export const RUN_LINES = {
   road: [
     "Customer is asking 'where is my order?' Third time already.",
-    "Careful near the cows, Riya. They have right of way. Always.",
+    "Careful near the cows, Bholu. They have right of way. Always.",
     "Your delivery rating is 4.2. It was 4.8 before you started.",
     "Reminder: parcel is marked FRAGILE. Handle with care, ya.",
     "Auto-wala is honking at you. Honk back, it's polite here.",
@@ -20,7 +20,7 @@ export const RUN_LINES = {
   tunnel: [
     "Shortcut, very good. Smell, very bad. Keep going!",
     "Don't touch the walls. Patna Nagar Nigam has not cleaned them since 1998.",
-    "Torch on, Riya. Even the rats here need directions.",
+    "Torch on, Bholu. Even the rats here need directions.",
     "Great echo in there. Sing something, the customer likes music.",
   ],
 };
@@ -37,35 +37,35 @@ export const ENTER_ROAD_LINES = [
   "Daylight! Now dodge the autos, na.",
 ];
 
-// Riya, when the torch is running out.
+// Bholu, when the torch is running out.
 export const LOW_BATTERY_LINES = [
   "Battery low! Grab the cells, grab the cells!",
   "Phone is dying! Someone give me a charger!",
 ];
 
-// Mamu, when she clips something and he closes in.
+// Mamu, when Bholu clips something and he closes in.
 export const HIT_LINES = [
-  "Ae, scooter wali! Ruko! Ruko!",
+  "Ae, scooter wale! Ruko! Ruko!",
   "One more rule broken and I'll catch you!",
   "Helmet is fine, driving is not! Stop!",
-  "Signal is red, madam! Red!",
+  "Signal is red, hero! Red!",
 ];
 
 export const CRASH_LINES = {
   road: [
-    "Arre! That was a cow. Cows don't move, Riya.",
+    "Arre! That was a cow. Cows don't move, Bholu.",
     "Parcel status: slightly flattened. Customer gave one star, yaar.",
     "No problem. We'll tell the customer it's 'out for delivery'.",
-    "Hello? Riya? ... Okay, sending the next courier.",
+    "Hello? Bholu? ... Okay, sending the next courier.",
   ],
   tunnel: [
-    "That was a pipe, Riya. Pipes have been there longer than you.",
+    "That was a pipe, Bholu. Pipes have been there longer than you.",
     "Dispatch here. Insurance claim filed. Again.",
-    "Hello? Riya? I'm hearing only echo.",
+    "Hello? Bholu? I'm hearing only echo.",
   ],
 };
 
-// When Mamu catches her.
+// When Mamu catches him.
 export const CAUGHT_LINES = [
   "Mamu caught you. He is writing a challan. A very long challan.",
   "Caught! Mamu says, 'license, RC, pollution certificate, sab dikhao.'",
@@ -74,7 +74,7 @@ export const CAUGHT_LINES = [
 
 // When the torch dies in a tunnel.
 export const DARK_LINES = [
-  "Torch died. Riya rode into the dark. And then into a wall.",
+  "Torch died. Bholu rode into the dark. And then into a wall.",
   "Battery finished! Next time charge your phone, beta.",
   "Pitch dark in there. Even the rats called for help.",
 ];
@@ -82,7 +82,7 @@ export const DARK_LINES = [
 export const POWER_LINES = {
   magnet: ["UPI magnet on! Tips are flying in.", "Scan and earn! Collect everything, we will count later."],
   shield: ["Helmet on! Now you can be careless for a bit.", "Extra helmet! Safety first, then speed."],
-  boost: ["Cutting chai! Full power!", "One chai, and she's off! Customer will be so happy."],
+  boost: ["Cutting chai! Full power!", "One chai, and he's off! Customer will be so happy."],
 };
 
 export const SHIELD_BREAK_LINES = [

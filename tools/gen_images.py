@@ -34,29 +34,27 @@ STICKER = (
     "centred, filling about 75% of the frame, on a perfectly flat pure green (#00FF00) background with nothing "
     "else. No text, no letters, no decorative frame."
 )
-# The hero, described once so every image of her matches the 3D model.
-RIYA = (
-    "Riya, a 19-year-old young woman from Patna, Bihar, with warm brown skin, big expressive eyes, a small black "
-    "bindi, a confident grin and a long thick black braid tied with a marigold-orange band. She wears an open "
-    "saffron courier half-helmet with a teal stripe and stickers, flight goggles pushed up, a deep teal courier "
-    "jacket with saffron reflective stripes and rolled sleeves, a rani-pink and yellow Madhubani-patterned "
-    "dupatta scarf, indigo cargo pants and white sneakers. A taped cardboard parcel is strapped to her back, "
-    "faint teal light glowing from its seams."
+# The hero, described once. (The cast's images are now drawn from family photos
+# by tools/gen_cast.py; these prompts are the fallback.)
+BHOLU = (
+    "Bholu, a cheerful young delivery rider from Bihar in his twenties, with warm brown skin, short black hair, a "
+    "light moustache and stubble. He wears a saffron scooter helmet with a teal stripe and stickers, a deep teal "
+    "courier jacket with saffron reflective stripes, a red-and-white checked gamchha scarf and cargo pants."
 )
 BOARD = "a hoverboard hand-painted like an Indian truck, saffron with pink and teal patterns"
 
 # name: (model, aspect ratio, kind, prompt). kind decides the post-processing.
 ASSETS = {
-    "keyart": (PRO, "16:9", "cover", f"""Video game key art, real-world India today, not futuristic. {RIYA} She rides a
+    "keyart": (PRO, "16:9", "cover", f"""Video game key art, real-world India today, not futuristic. {BHOLU} She rides a
 mint-green Indian scooter at full tilt through a crowded old Patna street at golden hour, weaving between an auto-rickshaw
 and a cow, a traffic policeman with a white helmet and mirrored sunglasses chasing on a police motorbike, whistle
-blowing. A concrete underpass mouth ahead, litchi trees in the far distance. Dynamic wide shot, Riya on the left third.
+blowing. A concrete underpass mouth ahead, litchi trees in the far distance. Dynamic wide shot, Bholu on the left third.
 Gently stylised 3D render like a modern animated film, warm colours. No text, no logos."""),
-    "keyart-tall": (PRO, "9:16", "cover", f"""Vertical phone wallpaper video game key art, real-world India today. {RIYA} She
+    "keyart-tall": (PRO, "9:16", "cover", f"""Vertical phone wallpaper video game key art, real-world India today. {BHOLU} She
 rides a mint-green Indian scooter towards us through a crowded Patna street at golden hour, a traffic policeman on a police
-motorbike chasing behind, autos and a cow around, litchi trees and a village house far away. Riya in the upper half.
+motorbike chasing behind, autos and a cow around, litchi trees and a village house far away. Bholu in the upper half.
 Gently stylised 3D render like a modern animated film, warm colours. No text, no logos."""),
-    "portrait-riya": (PRO, "1:1", "portrait", f"""Head-and-shoulders character portrait. {RIYA} She looks at the
+    "portrait-bholu": (PRO, "1:1", "portrait", f"""Head-and-shoulders character portrait. {BHOLU} She looks at the
 viewer with a cheeky, determined grin, one hand giving a thumbs up. Background: a softly blurred station
 tunnel with warm lights. Centred. {STYLE}"""),
     "portrait-nani": (PRO, "1:1", "portrait", f"""Head-and-shoulders character portrait of Nani, a cheerful

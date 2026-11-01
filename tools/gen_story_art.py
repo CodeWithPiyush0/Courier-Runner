@@ -1,8 +1,14 @@
-"""Generate the 2.5D art: Riya's gameplay sprites (on her scooter), Mamu's sprite,
+"""Generate the 2.5D art: backgrounds and plates (and, originally, the characters).
+
+The cast (Bholu, Nani, Mamu, Mishra ji) is now drawn from family photos by
+tools/gen_cast.py; the character entries below remain as the table that
+tools/import_art.py saves them by (folder, aspect, kind), and as a fallback.
+
+Originally: Bholu's gameplay sprites (on his scooter), Mamu's sprite,
 and the cutscene backgrounds, character cut-outs and full illustrated shots,
 all at 2K.
 
-Every character image is drawn from reference images (her portrait etc.) so she
+Every character image is drawn from reference images (his portrait etc.) so he
 looks the same everywhere. Sprites and cut-outs are drawn on a green screen and
 keyed out. Writes public/art/sprites/ and public/art/story/.
 
@@ -28,34 +34,33 @@ sys.stdout.reconfigure(line_buffering=True)
 MODEL = "gemini-3-pro-image"
 ART = gemini.ROOT / "public" / "art"
 GREEN = "on a perfectly flat pure green (#00FF00) background with nothing else, no ground, no shadow"
-SCOOTER = ("her scooter: a classic Indian two-wheeler scooter, mint green, a little dented, with a cardboard delivery "
+SCOOTER = ("his scooter: a classic Indian two-wheeler scooter, mint green, a little dented, with a cardboard delivery "
            "box strapped behind the seat")
-RIYA = ("Riya (exactly as in the reference: saffron helmet with a teal stripe and stickers, goggles, long black braid "
-        "with a marigold band, deep teal courier jacket with saffron reflective stripes, pink Madhubani dupatta, "
-        "indigo cargo pants, white sneakers, taped cardboard parcel on her back)")
+BHOLU = ("Bholu (exactly as in the reference: a young man with a saffron helmet with a teal stripe and stickers, a deep "
+        "teal courier jacket with saffron reflective stripes, a red-and-white checked gamchha scarf, cargo pants)")
 MAMU = ("Mamu, a burly Bihar traffic policeman in his forties: white helmet marked TRAFFIC POLICE, mirrored aviator "
         "sunglasses, thick moustache, crisp white-and-khaki uniform with a whistle on a cord")
 REAL = ("Real-world India today, not futuristic. Warm golden-hour light, gently stylised 3D render like a modern "
         "animated film, rich colour, no text other than any named signs.")
 # The last reference for every sprite is a crop of the game camera's view of the old placeholder model: it
 # fixes the viewpoint (straight behind, a little above), not the style.
-SPRITE = (f"Game sprite of {RIYA} riding {SCOOTER}. Match the CAMERA ANGLE of the last reference image (ignore its "
+SPRITE = (f"Game sprite of {BHOLU} riding {SCOOTER}. Match the CAMERA ANGLE of the last reference image (ignore its "
           "style): a rear view from behind and a little above, the scooter pointing away from us with its back wheel "
-          "at the bottom centre. The parcel on her back faces us with a red FRAGILE stamp; her braid and dupatta stream "
+          "at the bottom centre. The parcel box behind the seat faces us with a red FRAGILE stamp; his gamchha streams "
           f"back towards us. The whole rider and the whole scooter visible, filling about 85% of the frame height, {GREEN}. "
           "Same stylised 3D render style as the character reference, soft rim light.")
 CUTOUT = f"Waist-up character cut-out, {GREEN}. Same stylised 3D render style as the references."
 WIDE = ("Wide cinematic 16:9 shot. Keep the main subject in the centre third so it still reads when cropped to a "
         "tall phone screen.")
-SPRITE_REFS = ["portrait-riya", "sprites/sprite-ride", "sprites/camera-guide"]
+SPRITE_REFS = ["portrait-bholu", "sprites/sprite-ride", "sprites/camera-guide"]
 
 # name: (folder, aspect, kind, refs, prompt). kind: sprite | cutout | plate | portrait.
 ASSETS = {
-    # --- Riya in play (rear view). The ride pose is the reference for the others.
-    "sprite-ride": ("sprites", "3:4", "sprite", ["portrait-riya", "sprites/camera-guide"], f"{SPRITE} Pose: riding steadily, hands on the handlebars."),
-    "sprite-left": ("sprites", "3:4", "sprite", SPRITE_REFS, f"{SPRITE} Pose: leaning the scooter hard to HER LEFT (our left) as she swerves."),
-    "sprite-right": ("sprites", "3:4", "sprite", SPRITE_REFS, f"{SPRITE} Pose: leaning the scooter hard to HER RIGHT (our right) as she swerves."),
-    "sprite-jump": ("sprites", "3:4", "sprite", SPRITE_REFS, f"{SPRITE} Pose: the scooter in the air hopping a pothole, both wheels off the ground, Riya half standing."),
+    # --- Bholu in play (rear view). The ride pose is the reference for the others.
+    "sprite-ride": ("sprites", "3:4", "sprite", ["portrait-bholu", "sprites/camera-guide"], f"{SPRITE} Pose: riding steadily, hands on the handlebars."),
+    "sprite-left": ("sprites", "3:4", "sprite", SPRITE_REFS, f"{SPRITE} Pose: leaning the scooter hard to HIS LEFT (our left) as he swerves."),
+    "sprite-right": ("sprites", "3:4", "sprite", SPRITE_REFS, f"{SPRITE} Pose: leaning the scooter hard to HIS RIGHT (our right) as he swerves."),
+    "sprite-jump": ("sprites", "3:4", "sprite", SPRITE_REFS, f"{SPRITE} Pose: the scooter in the air hopping a pothole, both wheels off the ground, Bholu half standing."),
     "sprite-slide": ("sprites", "3:4", "sprite", SPRITE_REFS, f"{SPRITE} Pose: ducking flat over the handlebars to pass under a barrier."),
     "sprite-hit": ("sprites", "3:4", "sprite", SPRITE_REFS, f"{SPRITE} Pose: wobbling after clipping something, one foot out, startled, little dust puffs."),
     "sprite-cheer": ("sprites", "3:4", "sprite", SPRITE_REFS, f"{SPRITE} Pose: stopped, one foot down, punching the air in celebration."),
@@ -64,10 +69,10 @@ ASSETS = {
 
     # --- cut-outs (front-facing)
     "cut-mishra": ("story", "3:4", "cutout", ["dispatch"], f"{CUTOUT} Mishra ji (as in the reference), the cheerful middle-aged dispatcher of a small Patna courier office: moustache, glasses, blue shirt, a call-centre headset, a glass of chai in hand, mid-sentence."),
-    "cut-riya-talk": ("story", "3:4", "cutout", ["portrait-riya"], f"{CUTOUT} {RIYA}, talking cheerfully, one hand raised as she explains, mouth only slightly open."),
-    "cut-riya-grin": ("story", "3:4", "cutout", ["portrait-riya"], f"{CUTOUT} {RIYA}, a big confident grin, thumbs up."),
-    "cut-riya-shock": ("story", "3:4", "cutout", ["portrait-riya"], f"{CUTOUT} {RIYA}, shocked, eyes wide, hands up."),
-    "cut-riya-wave": ("story", "3:4", "cutout", ["portrait-riya"], f"{CUTOUT} {RIYA}, waving happily at the viewer."),
+    "cut-bholu-talk": ("story", "3:4", "cutout", ["portrait-bholu"], f"{CUTOUT} {BHOLU}, talking cheerfully, one hand raised as he explains, mouth only slightly open."),
+    "cut-bholu-grin": ("story", "3:4", "cutout", ["portrait-bholu"], f"{CUTOUT} {BHOLU}, a big confident grin, thumbs up."),
+    "cut-bholu-shock": ("story", "3:4", "cutout", ["portrait-bholu"], f"{CUTOUT} {BHOLU}, shocked, eyes wide, hands up."),
+    "cut-bholu-wave": ("story", "3:4", "cutout", ["portrait-bholu"], f"{CUTOUT} {BHOLU}, waving happily at the viewer."),
     "cut-nani": ("story", "3:4", "cutout", ["portrait-nani"], f"{CUTOUT} Nani (as in the reference), a cheerful tiny Bihari grandmother in her seventies: silver hair in a bun, round glasses, red bindi, cream cotton sari with a red border, holding an old landline receiver, smiling warmly with her mouth closed."),
     "cut-mamu": ("story", "3:4", "cutout", [], f"{CUTOUT} {MAMU}, pointing sternly at the viewer, whistle at his lips, comically serious."),
     "cut-mamu-laugh": ("story", "3:4", "cutout", ["story/cut-mamu"], f"{CUTOUT} The same policeman as the reference, helmet off under his arm and sunglasses pushed up, laughing warmly: a kind uncle."),

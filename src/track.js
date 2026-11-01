@@ -8,7 +8,7 @@ import { buildTrackMakers } from './models.js';
 // Each obstacle type: how deep it is along the run, what hitting it does, and
 // whether the player's current state gets them past it. The rules are the same
 // in every zone; only the look changes (auto-rickshaw → debris, pothole → pipe …).
-// "crash" ends the run; "zap" is a minor hit: Riya wobbles and Mamu closes in.
+// "crash" ends the run; "zap" is a minor hit: Bholu wobbles and Mamu closes in.
 export const OBSTACLES = {
   wall: { depth: 2.4, effect: 'crash', passes: () => false },
   low: { depth: 0.8, effect: 'zap', passes: (p) => p.jumpY > 0.5 },

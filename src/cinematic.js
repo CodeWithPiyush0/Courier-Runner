@@ -8,7 +8,7 @@ const AFTER_LINE = 0.45; // breath after the voice finishes
 const TAP_LOCK = 0.35; // ignore taps right after a cut, so a double tap doesn't skip a line
 
 // Camera moves for the 3D shots. Each returns (t 0..1, anchor) => { pos, look },
-// where anchor is the point on the floor under Riya and offsets are in metres
+// where anchor is the point on the floor under Bholu and offsets are in metres
 // (x right, y up, z backwards — the run heads towards -z).
 export const SHOTS = {
   // Straight move between two offsets, looking from one target to another.
@@ -17,26 +17,6 @@ export const SHOTS = {
     const at = (v) => new THREE.Vector3(a.x + v[0], a.y + v[1], a.z + v[2]);
     return { pos: at(from).lerp(at(to), e), look: at(lookFrom).lerp(at(lookTo), e) };
   },
-  // Circle round `center` at `radius` and `height`, from angle `from` to `to`
-  // (radians; 0 = behind her, +z), always looking at the centre.
-  orbit: ({ center, radius, height, from, to, lookHeight = 0 }) => (t, a) => {
-    const angle = from + (to - from) * (0.15 * ease(t) + 0.85 * t); // steady, eased only a little
-    const c = new THREE.Vector3(a.x + center[0], a.y + center[1], a.z + center[2]);
-    return {
-      pos: c.clone().add(new THREE.Vector3(Math.sin(angle) * radius, height, Math.cos(angle) * radius)),
-      look: c.clone().add(new THREE.Vector3(0, lookHeight, 0)),
-    };
-  },
-  // A smooth flight through several points, looking along several targets.
-  path: ({ points, looks }) => {
-    const v = (p) => new THREE.Vector3(...p);
-    const route = new THREE.CatmullRomCurve3(points.map(v));
-    const aim = new THREE.CatmullRomCurve3(looks.map(v));
-    return (t, a) => {
-      const e = ease(t);
-      return { pos: route.getPoint(e).add(a), look: aim.getPoint(e).add(a) };
-    };
-  },
 };
 
 // How long a line takes to say, roughly (used when there's no recording, and
@@ -44,7 +24,7 @@ export const SHOTS = {
 const estimate = (text) => Math.max(2.4, text.length * 0.066 + 0.9);
 
 // Plays a cutscene: a list of beats. A beat is either a 3D shot of the game
-// world ({ shot, duration, pose, wide, continuous }) or a 2.5D stage shot ({ stage }),
+// world ({ shot, duration, pose }) or a 2.5D stage shot ({ stage }),
 // optionally with a voiced line, a caption and a delivery title card. Lines stay
 // up until their voice has finished. Tap / Space = next, Skip / Esc = skip all.
 export class Cinematic {
@@ -67,11 +47,9 @@ export class Cinematic {
 
   // True while the current beat is a 2.5D stage shot (main renders the stage then).
   get onStage() { return this.active && Boolean(this.beats[this.index]?.stage); }
-  // True during a wide aerial shot (main pushes the fog back so the city shows).
-  get wide() { return this.active && Boolean(this.beats[this.index]?.wide); }
 
-  // anchor: () => Vector3 floor point under Riya. player: for her pose.
-  // inTunnel: () => whether she's in a tunnel (the camera then stays inside it).
+  // anchor: () => Vector3 floor point under Bholu. player: for his pose.
+  // inTunnel: () => whether he's in a tunnel (the camera then stays inside it).
   play(beats, { anchor, player, inTunnel = () => false, onDone = () => {} }) {
     this.beats = beats;
     this.anchor = anchor;
@@ -79,7 +57,7 @@ export class Cinematic {
     this.player = player;
     this.onDone = onDone;
     this.active = true;
-    // Take the camera off Riya's rig for the cutscene; restored in finish().
+    // Take the camera off Bholu's rig for the cutscene; restored in finish().
     this.saved = {
       parent: this.camera.parent,
       position: this.camera.position.clone(),
@@ -103,7 +81,7 @@ export class Cinematic {
     this.lineEndedAt = 0;
     this.length = beat.duration ?? estimate(beat.line?.text ?? '');
     this.player.pose = beat.pose ?? { ride: true };
-    if (!beat.continuous) this.dip(); // a continuous beat carries straight on from the last one
+    this.dip();
 
     if (beat.stage) this.stage.show(beat.stage, beat.line?.who);
     this.el.classList.toggle('letterbox', !beat.stage); // bars for 3D camera shots only

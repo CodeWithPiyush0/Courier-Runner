@@ -74,8 +74,8 @@ export class Screens {
     this.render(`
       <img class="emblem" src="/art/emblem.webp" alt="">
       <h1>Patna Rush</h1>
-      <p class="tagline">Riya has one parcel to deliver: Nani's old radio, from Patna to Muzaffarpur, before her
-        birthday ends. And a traffic police Mamu is on her tail.</p>
+      <p class="tagline">Bholu has one parcel to deliver: Nani's old radio, from Patna to Muzaffarpur, before her
+        birthday ends. And a traffic police Mamu is on his tail.</p>
       <div class="buttons">
         ${main}
         <button data-action="route">Delivery route</button>
@@ -127,7 +127,7 @@ export class Screens {
     const endless = `
       <li class="stop endless ${progress.endlessUnlocked ? '' : 'locked'}" data-action="endless">
         <span class="num">∞</span>
-        <span><b>Endless</b><small>${progress.endlessUnlocked ? 'How far can Riya go?' : 'Finish the story to unlock'}</small></span>
+        <span><b>Endless</b><small>${progress.endlessUnlocked ? 'How far can Bholu go?' : 'Finish the story to unlock'}</small></span>
       </li>`;
     this.render(`
       <h2>Delivery Route</h2>
@@ -269,7 +269,7 @@ export class Screens {
       <img class="emblem" src="/art/portrait-nani.webp" alt="" style="border-radius:50%">
       <h1>The End</h1>
       <p class="tagline">Nani's radio is home and playing, Mamu cancelled the challan, and everyone is eating
-        Shahi litchi. Riya got her five stars.</p>
+        Shahi litchi. Bholu got his five stars.</p>
       <p class="sub">Endless mode unlocked</p>
       <div class="buttons">
         <button class="primary" data-action="endless">Play Endless</button>
